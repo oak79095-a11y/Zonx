@@ -5,7 +5,7 @@
     "type": "module",
     "scripts": {
         "dev": "node --env-file=.env --watch server.js",
-        "start": "node --env-file=.env server.js",
+        "start": "node server.js",
         "seed": "node --env-file=.env db.js"
     },
     "dependencies": {
