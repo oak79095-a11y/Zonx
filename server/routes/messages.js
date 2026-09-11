@@ -20,7 +20,7 @@ const chatUpload = multer({
   fileFilter: (_req, file, cb) => {
     cb(null, CHAT_ALLOWED_TYPES.has(file.mimetype))
   },
-  limits: { fileSize: 25 * 1024 * 1024 },
+  limits: { fileSize: 10 * 1024 * 1024 },
 })
 
 function mediaKindOf(mime) {

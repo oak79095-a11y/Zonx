@@ -17,14 +17,14 @@ function counts(db, userId) {
 // بروفايل عام لأي مستخدم
 router.get('/:id', optionalAuth, (req, res) => {
   const db = getDb()
-  const u = db.prepare('SELECT id, email, name, avatar, verified, role, created_at FROM users WHERE id = ?').get(req.params.id)
+  const u = db.prepare('SELECT id, name, avatar, verified, created_at FROM users WHERE id = ?').get(req.params.id)
   if (!u) return res.status(404).json({ error: 'غير موجود' })
   const c = counts(db, u.id)
   const is_me = req.user?.id === u.id
   const is_following = !is_me && req.user
     ? Boolean(db.prepare('SELECT 1 FROM follows WHERE follower_id = ? AND following_id = ?').get(req.user.id, u.id))
     : false
-  res.json({ id: u.id, email: u.email || null, name: u.name, avatar: u.avatar || null, created_at: u.created_at, verified: Boolean(u.verified), role: u.role, ...c, is_following, is_me })
+  res.json({ id: u.id, name: u.name, avatar: u.avatar || null, created_at: u.created_at, verified: Boolean(u.verified), ...c, is_following, is_me })
 })
 
 // متابعة / الغاء متابعة (تبديل)

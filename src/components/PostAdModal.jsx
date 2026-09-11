@@ -91,7 +91,7 @@ export default function PostAdModal({ open, onClose, onCreate }) {
           price: Number(price),
           category_id: category,
           city_id: city,
-          phone: phone.trim() || '0990000000',
+          phone: phone.trim() || null,
         })
       })
       if (!r.ok) {

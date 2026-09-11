@@ -18,6 +18,15 @@ fs.mkdirSync(path.dirname(DB_PATH), { recursive: true })
 const db = new DatabaseSync(DB_PATH)
 db.exec('PRAGMA journal_mode = WAL')
 db.exec('PRAGMA foreign_keys = ON')
+// Concurrency & throughput tuning:
+// - busy_timeout: writers wait instead of failing with SQLITE_BUSY under bursts
+// - synchronous=NORMAL: safe with WAL, avoids an fsync per commit
+// - cache_size/mmap: keep hot pages in memory (negative cache_size = KiB)
+db.exec('PRAGMA busy_timeout = 5000')
+db.exec('PRAGMA synchronous = NORMAL')
+db.exec('PRAGMA cache_size = -32768')
+db.exec('PRAGMA mmap_size = 67108864')
+db.exec('PRAGMA temp_store = MEMORY')
 
 export function getDb() {
   return db

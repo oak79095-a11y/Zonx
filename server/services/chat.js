@@ -5,8 +5,8 @@ function convKey(db, a, b) {
   const existing = db.prepare('SELECT id FROM conversations WHERE user1_id = ? AND user2_id = ?').get(u1, u2)
   if (existing) return existing.id
   const id = makeId()
-  db.prepare('INSERT INTO conversations(id,user1_id,user2_id) VALUES(?,?,?)').run(id, u1, u2)
-  return id
+  db.prepare('INSERT INTO conversations(id,user1_id,user2_id) VALUES(?,?,?) ON CONFLICT(user1_id,user2_id) DO NOTHING').run(id, u1, u2)
+  return db.prepare('SELECT id FROM conversations WHERE user1_id = ? AND user2_id = ?').get(u1, u2).id
 }
 
 export function getOrCreateConversation(db, a, b) {
@@ -28,10 +28,10 @@ export function listConversations(db, userId) {
     ORDER BY c.last_message_at DESC
   `).all(userId, userId)
 
-  const unreadStmt = db.prepare(
-    "SELECT COUNT(*) as c FROM messages WHERE conversation_id = ? AND sender_id != ? AND read_at IS NULL"
-  )
-   const userStmt = db.prepare('SELECT id, email, name, avatar, verified, role FROM users WHERE id = ?')
+   const unreadRows = new Map(db.prepare(
+     "SELECT conversation_id, COUNT(*) as c FROM messages WHERE sender_id != ? AND read_at IS NULL GROUP BY conversation_id"
+   ).all(userId).map((row) => [row.conversation_id, row.c]))
+    const userStmt = db.prepare('SELECT id, name, avatar, verified FROM users WHERE id = ?')
 
   return rows.map((row) => {
     const otherId = otherOf(row, userId)
@@ -42,7 +42,7 @@ export function listConversations(db, userId) {
       last_text: row.last_text || '',
       last_media_type: row.last_media_type || 'text',
       last_at: row.last_time || row.last_message_at,
-      unread: unreadStmt.get(row.id, userId)?.c || 0,
+       unread: unreadRows.get(row.id) || 0,
     }
   })
 }
@@ -51,15 +51,15 @@ export function getHistory(db, convId, userId, limit = 100) {
   const conv = db.prepare('SELECT * FROM conversations WHERE id = ?').get(convId)
   if (!conv || (conv.user1_id !== userId && conv.user2_id !== userId)) return null
   const otherId = otherOf(conv, userId)
-   const other = db.prepare('SELECT id, email, name, avatar, verified, role FROM users WHERE id = ?').get(otherId)
+    const other = db.prepare('SELECT id, name, avatar, verified FROM users WHERE id = ?').get(otherId)
   const rows = db.prepare(`
     SELECT m.id, m.sender_id, m.text, m.media, m.media_type, m.media_name, m.media_size, m.read_at, m.created_at,
       (SELECT COUNT(*) FROM message_reactions r WHERE r.message_id = m.id AND r.reaction = 'heart') AS reactions,
       EXISTS(SELECT 1 FROM message_reactions r WHERE r.message_id = m.id AND r.user_id = ? AND r.reaction = 'heart') AS reacted
     FROM messages m
-    WHERE m.conversation_id = ? ORDER BY m.created_at ASC
-  `).all(userId, convId)
-  const msgs = rows.slice(-limit).map((r) => ({
+     WHERE m.conversation_id = ? ORDER BY m.created_at DESC LIMIT ?
+   `).all(userId, convId, Math.min(Math.max(Number(limit) || 100, 1), 100))
+   const msgs = rows.reverse().map((r) => ({
     id: r.id,
     from: r.sender_id === userId ? 'me' : 'them',
     text: r.text,
@@ -91,9 +91,7 @@ export function markRead(db, convId, userId) {
 }
 
 export function unreadTotal(db, userId) {
-  const rows = db.prepare('SELECT id FROM conversations WHERE user1_id = ? OR user2_id = ?').all(userId, userId)
-  const stmt = db.prepare(
-    "SELECT COUNT(*) as c FROM messages WHERE conversation_id = ? AND sender_id != ? AND read_at IS NULL"
-  )
-  return rows.reduce((sum, r) => sum + (stmt.get(r.id, userId)?.c || 0), 0)
+   return db.prepare(
+     "SELECT COUNT(*) as c FROM messages m JOIN conversations c ON c.id = m.conversation_id WHERE (c.user1_id = ? OR c.user2_id = ?) AND m.sender_id != ? AND m.read_at IS NULL"
+   ).get(userId, userId, userId)?.c || 0
 }

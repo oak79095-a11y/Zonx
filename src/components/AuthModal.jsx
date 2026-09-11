@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import useOverlay from '../hooks/useOverlay.js'
 
 export default function AuthModal({ open, onClose, onSuccess }) {
@@ -12,6 +12,18 @@ export default function AuthModal({ open, onClose, onSuccess }) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const fileRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) {
+      setName('')
+      setEmail('')
+      setPhone('')
+      setPassword('')
+      setAvatar(null)
+      setAvatarPreview(null)
+      setError('')
+    }
+  }, [open])
 
   useOverlay(open, onClose)
 
@@ -73,7 +85,7 @@ export default function AuthModal({ open, onClose, onSuccess }) {
           <button type="button" className="modal-close" onClick={onClose} aria-label="اغلاق">✕</button>
         </div>
         <div className="red-line small" style={{margin:'0 16px 12px'}}></div>
-        <form onSubmit={submit} className="modal-body">
+        <form onSubmit={submit} className="modal-body" autoComplete="off">
           {mode === 'register' && (
             <div style={{display:'flex', flexDirection:'column', alignItems:'center', gap:'8px', marginBottom:'10px'}}>
               <button type="button" className="auth-avatar-btn" onClick={() => fileRef.current?.click()}>
@@ -86,9 +98,9 @@ export default function AuthModal({ open, onClose, onSuccess }) {
           {mode === 'register' && (
             <label>الاسم الحقيقي<input value={name} onChange={e=>setName(e.target.value)} placeholder="اسمك الكامل" required /></label>
           )}
-          <label>البريد الالكتروني<input value={email} onChange={e=>setEmail(e.target.value)} placeholder="example@mail.com" /></label>
-          <label>رقم الهاتف<input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="09xxxxxxxx" /></label>
-          <label>كلمة السر<input type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="6 احرف على الاقل" required /></label>
+            <label>البريد الالكتروني<input autoComplete="username" value={email} onChange={e=>setEmail(e.target.value)} placeholder="example@mail.com" /></label>
+          <label>رقم الهاتف<input autoComplete="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="09xxxxxxxx" /></label>
+          <label>كلمة السر<input type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} value={password} onChange={e=>setPassword(e.target.value)} placeholder="6 احرف على الاقل" required /></label>
           {error && <p className="form-error">{error}</p>}
           <button type="submit" className="btn btn-primary" disabled={loading} style={{width:'100%', marginTop:'8px'}}>
             {loading ? 'جاري...' : (mode === 'login' ? 'دخول' : 'انشاء الحساب')}

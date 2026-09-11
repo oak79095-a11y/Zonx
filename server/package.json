@@ -9,6 +9,7 @@
         "seed": "node --env-file=.env db.js"
     },
     "dependencies": {
+        "compression": "^1.8.2",
         "cookie-parser": "^1.4.7",
         "cors": "^2.8.5",
         "express": "^4.19.2",

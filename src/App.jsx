@@ -136,7 +136,7 @@ function AppContent() {
   }
 
   const openSellerProfile = (ad) => {
-    setProfileSeller({ id: ad.seller_id || null, email: ad.seller_email, name: ad.seller_name, avatar: ad.seller_avatar })
+    setProfileSeller({ id: ad.seller_id || null, name: ad.seller_name, avatar: ad.seller_avatar, verified: ad.seller_verified })
     setView('profile')
     window.scrollTo({ top: 0, behavior: 'auto' })
   }
@@ -442,7 +442,6 @@ function mapApiAd(l) {
     phone: l.phone || '',
     seller_id: l.user_id || null,
     seller_name: l.seller_name || 'بائع',
-    seller_email: l.seller_email || null,
     seller_avatar: mediaUrl(l.seller_avatar),
     seller_verified: Boolean(l.seller_verified),
     likes: l.likes || 0,

@@ -689,18 +689,18 @@ export default function Messages({ user, initialPeer, onBack, onRequireAuth }) {
                             onContextMenu={(event) => { event.preventDefault(); setActionMessage(m.id) }}
                           >
                             {m.media_type === 'image' && m.media && (
-                              <a className="msg-media-img" href={m.media} target="_blank" rel="noreferrer" onClick={(event) => { event.preventDefault(); setActionMessage(m.id) }}>
-                                <img src={m.media} alt="" />
+                              <a className="msg-media-img" href={mediaUrl(m.media)} target="_blank" rel="noreferrer" onClick={(event) => { event.preventDefault(); setActionMessage(m.id) }}>
+                                <img src={mediaUrl(m.media)} alt="" />
                               </a>
                             )}
                             {m.media_type === 'video' && m.media && (
-                              <video className="msg-media-video" src={m.media} controls preload="metadata" onClick={(event) => { event.preventDefault(); setActionMessage(m.id) }} />
+                              <video className="msg-media-video" src={mediaUrl(m.media)} controls preload="metadata" onClick={(event) => { event.preventDefault(); setActionMessage(m.id) }} />
                             )}
                             {m.media_type === 'audio' && m.media && (
-                              <VoiceMessage src={m.media} />
+                              <VoiceMessage src={mediaUrl(m.media)} />
                             )}
                             {m.media_type === 'file' && m.media && (
-                              <a className="msg-file" href={m.media} download={m.media_name || ''}>
+                              <a className="msg-file" href={mediaUrl(m.media)} download={m.media_name || ''}>
                                 <span className="msg-file-ic"><FileIcon size={18} /></span>
                                 <span className="msg-file-info">
                                   <b>{m.media_name || 'ملف'}</b>

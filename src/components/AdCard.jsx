@@ -24,7 +24,7 @@ export default function AdCard({ ad, onClick, onAvatar, userId = null }) {
   const isVideo = Boolean(videoUrl)
   const seller = ad.seller_name || 'بائع'
   const sellerAvatar = ad.seller_avatar
-  const isAdminSeller = ad.seller_email === 'oak79095@gmail.com'
+  const isAdminSeller = Boolean(ad.seller_verified)
   const icon = categoryIcon(ad.category) || '🏷️'
 
   const [liked, setLiked] = useState(() => loadSet(likedKey).has(ad.id))

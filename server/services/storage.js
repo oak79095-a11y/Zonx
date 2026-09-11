@@ -45,7 +45,7 @@ export const CHAT_ALLOWED_TYPES = new Set([
 ])
 
 export const MAX_FILES = 8
-export const MAX_FILE_SIZE = 15 * 1024 * 1024 // 15MB for video
+export const MAX_FILE_SIZE = 8 * 1024 * 1024
 export const MAX_VIDEO_DURATION_SEC = 30
 
 const EXTENSIONS = {

@@ -5,7 +5,6 @@ import { rateLimit } from '../middleware/rateLimit.js'
 import { makeId } from '../utils/auth.js'
 import { saveFile, deleteFile, MAX_FILES, ALLOWED_TYPES, MAX_FILE_SIZE } from '../services/storage.js'
 import { listingUpload, singleUpload, uploadHandler } from '../middleware/upload.js'
-import { expireListings } from '../services/expiration.js'
 import { createNotification } from '../services/notifications.js'
 
 const router = Router()
@@ -49,16 +48,19 @@ router.post('/', authenticate, (req, res) => {
 // قائمة عامة بالاعلانات النشطة
 router.get('/', (req, res) => {
   const db = getDb()
-  expireListings(db)
+  const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 40, 1), 60)
+  const offset = Math.max(Number.parseInt(req.query.offset, 10) || 0, 0)
+  const sellerId = String(req.query.user_id || '').trim() || null
   const rows = db.prepare(`
-     SELECT l.*, u.name as seller_name, u.email as seller_email, u.avatar as seller_avatar, u.verified as seller_verified, GROUP_CONCAT(li.path, '|') as images
-    FROM listings l
-    LEFT JOIN listing_images li ON li.listing_id = l.id
-    LEFT JOIN users u ON u.id = l.user_id
-    WHERE l.status = 'active'
-    GROUP BY l.id
-    ORDER BY l.featured DESC, l.created_at DESC
-  `).all()
+     SELECT l.*, u.name as seller_name, u.avatar as seller_avatar, u.verified as seller_verified, GROUP_CONCAT(li.path, '|') as images
+     FROM listings l
+     LEFT JOIN listing_images li ON li.listing_id = l.id
+     LEFT JOIN users u ON u.id = l.user_id
+     WHERE l.status = 'active' AND (? IS NULL OR l.user_id = ?)
+     GROUP BY l.id
+     ORDER BY l.featured DESC, l.created_at DESC
+     LIMIT ? OFFSET ?
+   `).all(sellerId, sellerId, limit, offset)
   res.json(rows.map(mapListing))
 })
 
@@ -158,7 +160,6 @@ router.post('/:id/images', authenticate, rateLimit({ windowMs: 60 * 1000, max: 1
 
 router.get('/mine', authenticate, (req, res) => {
   const db = getDb()
-  expireListings(db)
   const rows = db.prepare(`SELECT l.*, GROUP_CONCAT(li.path, '|') as images FROM listings l LEFT JOIN listing_images li ON li.listing_id = l.id WHERE l.user_id = ? GROUP BY l.id ORDER BY l.created_at DESC`).all(req.user.id)
   res.json(rows.map(mapListing))
 })
@@ -210,7 +211,7 @@ router.delete('/:id', authenticate, (req, res) => {
 function mapListing(row) {
   if (!row) return null
   const images = (row.images || '').split('|').filter(Boolean)
-   return { id: row.id, user_id: row.user_id, title: row.title, description: row.description, price: row.price, category_id: row.category_id, city_id: row.city_id, status: row.status, phone: row.phone || null, seller_name: row.seller_name || 'بائع', seller_email: row.seller_email || null, seller_avatar: row.seller_avatar || null, seller_verified: Boolean(row.seller_verified), likes: row.likes || 0, featured: Boolean(row.featured), featured_until: row.featured_until, expires_at: row.expires_at, views: row.views, created_at: row.created_at, images }
+   return { id: row.id, user_id: row.user_id, title: row.title, description: row.description, price: row.price, category_id: row.category_id, city_id: row.city_id, status: row.status, phone: row.phone || null, seller_name: row.seller_name || 'بائع', seller_avatar: row.seller_avatar || null, seller_verified: Boolean(row.seller_verified), likes: row.likes || 0, featured: Boolean(row.featured), featured_until: row.featured_until, expires_at: row.expires_at, views: row.views, created_at: row.created_at, images: images.slice(0, 8) }
 }
 
 export default router

@@ -33,7 +33,6 @@ function mapApiAd(l) {
     phone: l.phone || '',
     seller_id: l.user_id || l.seller_id || null,
     seller_name: l.seller_name || 'بائع',
-    seller_email: l.seller_email || null,
     seller_avatar: mediaUrl(l.seller_avatar),
     seller_verified: Boolean(l.seller_verified),
     likes: l.likes || 0,
@@ -57,7 +56,7 @@ export default function SellerProfile({ seller, user, onBack, onOpenAd, onSeller
     setAds(null)
     setInfo(null)
     setOffline(false)
-    fetch('/api/listings')
+    fetch(`/api/listings?user_id=${encodeURIComponent(seller.id || '')}&limit=40`)
       .then((r) => { if (!r.ok) throw new Error('offline'); return r.json() })
       .then((rows) => { if (alive) setAds(Array.isArray(rows) ? rows.map(mapApiAd) : []) })
       .catch(() => { if (alive) { setOffline(true); setAds([]) } })
@@ -70,20 +69,15 @@ export default function SellerProfile({ seller, user, onBack, onOpenAd, onSeller
     return () => { alive = false }
   }, [seller.id])
 
-  const own = (ads || []).filter((a) => (
-    seller.id ? a.seller_id === seller.id : a.seller_name === seller.name
-  ))
-
-  const email = info?.email || seller.email || own[0]?.seller_email || null
-  const isAdminProfile = email === 'oak79095@gmail.com'
   const name = info?.name || seller.name || 'بائع'
-  const avatar = info?.avatar || seller.avatar
-  const verified = isAdminProfile
+  const avatar = mediaUrl(info?.avatar || seller.avatar)
+  const verified = Boolean(info?.verified || seller.verified)
   const followers = info ? info.followers : 0
   const following = info ? info.following : 0
-  const isOwner = isAdminProfile
+  const isOwner = Boolean(info?.is_me)
   const isMe = Boolean(info?.is_me)
   const isFollowing = Boolean(info?.is_following)
+  const own = ads || []
 
   const canFollow = Boolean(user && seller.id && info && !isMe && !isOwner)
 

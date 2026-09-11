@@ -22,7 +22,7 @@ router.get('/', authenticate, (req, res) => {
   const db = getDb()
   cleanExpiredStories(db)
   const rows = db.prepare(`
-     SELECT s.*, u.name as user_name, u.email as user_email, u.avatar as user_avatar
+     SELECT s.*, u.name as user_name, u.avatar as user_avatar
     FROM stories s
     LEFT JOIN users u ON u.id = s.user_id
     ORDER BY s.created_at DESC
@@ -31,7 +31,6 @@ router.get('/', authenticate, (req, res) => {
     id: r.id,
     user_id: r.user_id,
      user_name: r.user_name || 'مستخدم',
-     user_email: r.user_email || null,
     user_avatar: r.user_avatar || null,
     media: r.media,
     media_type: r.media_type,

@@ -1,5 +1,6 @@
 ﻿import express from 'express'
 import cors from 'cors'
+import compression from 'compression'
 import cookieParser from 'cookie-parser'
 import http from 'node:http'
 import path from 'node:path'
@@ -28,14 +29,30 @@ const frontendPath = path.join(__dirname, '..', 'dist')
 
 const app = express()
 
+// Trust the first proxy hop (Render/nginx) so req.ip and rate limits see real client IPs.
+app.set('trust proxy', 1)
+// Keep-alive + gzip shrink JSON/HTML payloads several times under load.
+app.use(compression())
+
+// Basic hardening headers (no CSP: the SPA uses inline assets).
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  res.setHeader('X-Frame-Options', 'DENY')
+  res.setHeader('Referrer-Policy', 'same-origin')
+  next()
+})
+
 app.use(cors({ origin: FRONTEND_URL, credentials: true }))
 app.use(cookieParser())
 app.use(express.json({ limit: '5mb' }))
 
+// Uploads carry random UUID names and never change in place -> cache them forever.
+const STATIC_OPTS = { maxAge: '365d', immutable: true, fallthrough: true }
+
 // Keep chat media behind authentication. A random file path must not grant access.
-app.use('/uploads/listings', express.static(path.join(__dirname, 'uploads', 'listings')))
-app.use('/uploads/avatars', express.static(path.join(__dirname, 'uploads', 'avatars')))
-app.use('/uploads/stories', express.static(path.join(__dirname, 'uploads', 'stories')))
+app.use('/uploads/listings', express.static(path.join(__dirname, 'uploads', 'listings'), STATIC_OPTS))
+app.use('/uploads/avatars', express.static(path.join(__dirname, 'uploads', 'avatars'), STATIC_OPTS))
+app.use('/uploads/stories', express.static(path.join(__dirname, 'uploads', 'stories'), STATIC_OPTS))
 app.use('/uploads/chat', (req, res, next) => {
   const token = req.cookies?.session || req.headers.authorization?.replace('Bearer ', '')
   if (!token) return res.status(401).end()
@@ -58,11 +75,13 @@ app.use('/uploads/chat', (req, res, next) => {
     `).get(mediaPath, userId, mediaPath, userId, userId)
     const admin = payload.role === 'admin'
     if (!allowed && !admin) return res.status(404).end()
+    // Authenticated media: cacheable per-user only, never by shared proxies.
+    res.setHeader('Cache-Control', 'private, max-age=86400')
     next()
   } catch {
     res.status(401).end()
   }
-}, express.static(path.join(__dirname, 'uploads', 'chat')))
+}, express.static(path.join(__dirname, 'uploads', 'chat'), { maxAge: '1d', fallthrough: true }))
 
 // API routes
 app.use('/api/auth', authRoutes)
@@ -80,9 +99,19 @@ app.get('/health', (_req, res) => res.json({ ok: true, service: 'limon-bazaar' }
 
 // In production the API, WebSocket endpoint, and SPA share one origin.
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(frontendPath))
+  // Hashed Vite assets are immutable; index.html must always be revalidated.
+  app.use(express.static(frontendPath, {
+    setHeaders(res, filePath) {
+      if (/\.(js|css|woff2?|png|jpe?g|webp|svg|gif|mp4|webm)$/i.test(filePath) && filePath.includes('assets')) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
+      } else {
+        res.setHeader('Cache-Control', 'no-cache')
+      }
+    },
+  }))
   app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api/') || req.path.startsWith('/uploads/') || req.path === '/ws') return next()
+    res.setHeader('Cache-Control', 'no-cache')
     res.sendFile(path.join(frontendPath, 'index.html'))
   })
 }
@@ -94,6 +123,7 @@ app.use((err, _req, res, _next) => {
 
 const db = initDb()
 expireListings(db)
+setInterval(() => expireListings(db), 5 * 60 * 1000).unref()
 
 const httpServer = http.createServer(app)
 initWs(httpServer)
