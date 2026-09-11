@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: bayader
+    runtime: docker
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: FRONTEND_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_NAME
+        value: Bayader Administrator
+    disk:
+      name: bayader-data
+      mountPath: /data
+      sizeGB: 10

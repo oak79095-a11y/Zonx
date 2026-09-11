@@ -1,0 +1,464 @@
+﻿import { useMemo, useState, useEffect, useRef } from 'react'
+import Header from './components/Header.jsx'
+import Footer from './components/Footer.jsx'
+import AdGrid from './components/AdGrid.jsx'
+import AdCard from './components/AdCard.jsx'
+import AdDetail from './components/AdDetail.jsx'
+import Sidebar from './components/Sidebar.jsx'
+import PostAdModal from './components/PostAdModal.jsx'
+import AuthModal from './components/AuthModal.jsx'
+import StoriesBar from './components/StoriesBar.jsx'
+import SellerProfile from './components/SellerProfile.jsx'
+import Messages from './components/Messages.jsx'
+import AdminLogin from './components/AdminLogin.jsx'
+import AdminDashboard from './components/AdminDashboard.jsx'
+import NotificationCenter from './components/NotificationCenter.jsx'
+import Hero from './components/Hero.jsx'
+import BottomBar from './components/BottomBar.jsx'
+import Toasts, { toast } from './components/Toast.jsx'
+import { ArrowBackIcon } from './components/icons.jsx'
+import { ads as initialAds } from './data/ads.js'
+import { categories, categoryIcon } from './data/catalog.js'
+
+function BackToTop() {
+  const [show, setShow] = useState(false)
+  useEffect(() => {
+    const onScroll = () => setShow(window.scrollY > 500)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    onScroll()
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+  return (
+    <button
+      type="button"
+      className={'back-to-top' + (show ? ' show' : '')}
+      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      aria-label="العودة إلى الأعلى"
+    >↑</button>
+  )
+}
+
+function SkeletonCard() {
+  return (
+    <div className="skel-card">
+      <div className="skel-media" />
+      <div className="skel-body">
+        <div className="skel-line w60" />
+        <div className="skel-line w80" />
+        <div className="skel-line w40" />
+      </div>
+    </div>
+  )
+}
+
+function AppContent() {
+  const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
+  const [view, setView] = useState(isAdminPath ? 'admin-login' : 'home')
+  const [adminUser, setAdminUser] = useState(null)
+  const [activeCategory, setActiveCategory] = useState(null)
+  const [city, setCity] = useState('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedAd, setSelectedAd] = useState(null)
+  const [profileSeller, setProfileSeller] = useState(null)
+  const [msgPeer, setMsgPeer] = useState(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [postOpen, setPostOpen] = useState(false)
+  const [authOpen, setAuthOpen] = useState(false)
+  const authActionRef = useRef(null)
+  const [user, setUser] = useState(null)
+  const [ads, setAds] = useState(initialAds)
+  const [serverOffline, setServerOffline] = useState(false)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (isAdminPath) {
+      fetch('/api/auth/me', { credentials: 'include' }).then(r=>r.json()).then(u=>{
+        if (u.role === 'admin') { setAdminUser(u); setView('admin') }
+        else setView('admin-login')
+      }).catch(()=>setView('admin-login'))
+    } else {
+      fetch('/api/auth/me', { credentials: 'include' }).then(r => r.ok ? r.json() : null).then(u => {
+        if (u && u.id) setUser(u)
+      }).catch(() => {})
+    }
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/listings')
+      .then(r => {
+        if (!r.ok) throw new Error('offline')
+        return r.json()
+      })
+      .then(rows => {
+        if (Array.isArray(rows)) setAds(rows.map(mapApiAd))
+        setServerOffline(false)
+      })
+      .catch(() => setServerOffline(true))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const filteredAds = useMemo(() => {
+    return ads.filter((ad) => {
+      if (activeCategory && ad.category !== activeCategory) return false
+      if (city !== 'all' && ad.city !== city) return false
+      if (searchQuery.trim()) {
+        const q = searchQuery.trim()
+        const haystack = ad.title + ' ' + ad.description
+        if (!haystack.includes(q)) return false
+      }
+      return true
+    })
+  }, [ads, activeCategory, city, searchQuery])
+
+  const featuredAds = useMemo(() => ads.filter((a) => a.featured), [ads])
+  const latestAds = useMemo(() => ads.slice(0, 8), [ads])
+
+  const goBrowse = (category) => {
+    setActiveCategory(category)
+    setView('browse')
+    window.scrollTo({ top: 0, behavior: 'auto' })
+  }
+
+  const goHome = () => {
+    setActiveCategory(null)
+    setSearchQuery('')
+    setView('home')
+    setSelectedAd(null)
+    window.history.pushState(null,'','/')
+    window.scrollTo({ top: 0, behavior: 'auto' })
+  }
+
+  const openAd = (ad) => {
+    setSelectedAd(ad)
+    setView('detail')
+    window.scrollTo({ top: 0, behavior: 'auto' })
+  }
+
+  const openSellerProfile = (ad) => {
+    setProfileSeller({ id: ad.seller_id || null, email: ad.seller_email, name: ad.seller_name, avatar: ad.seller_avatar })
+    setView('profile')
+    window.scrollTo({ top: 0, behavior: 'auto' })
+  }
+
+  const openMessages = (peer) => {
+    if (!user) {
+      authActionRef.current = () => {
+        setMsgPeer(peer ? { id: peer.id, name: peer.name, avatar: peer.avatar } : null)
+        setView('messages')
+        window.scrollTo({ top: 0, behavior: 'auto' })
+      }
+      setAuthOpen(true)
+      toast('سجل الدخول اولاً لاستخدام المراسلات', 'info')
+      return
+    }
+    setMsgPeer(peer ? { id: peer.id, name: peer.name, avatar: peer.avatar } : null)
+    setView('messages')
+    window.scrollTo({ top: 0, behavior: 'auto' })
+  }
+
+  const openFavorites = () => {
+    setView('favorites')
+    window.scrollTo({ top: 0, behavior: 'auto' })
+  }
+
+  const likedStorageKey = `bazaar-liked-ads:${user?.id || 'guest'}`
+  let likedAds = []
+  if (view === 'favorites') {
+    let ids = []
+    try { ids = JSON.parse(localStorage.getItem(likedStorageKey) || '[]') } catch {}
+    likedAds = ads.filter((a) => ids.includes(a.id))
+  }
+
+  const [likedCount, setLikedCount] = useState(0)
+  const [unreadNotifications, setUnreadNotifications] = useState(0)
+  useEffect(() => {
+    const refresh = () => {
+      let ids = []
+      try { ids = JSON.parse(localStorage.getItem(likedStorageKey) || '[]') } catch {}
+      setLikedCount(ads.filter((a) => ids.includes(a.id)).length)
+    }
+    refresh()
+    window.addEventListener('bazaar-liked-changed', refresh)
+    return () => window.removeEventListener('bazaar-liked-changed', refresh)
+  }, [ads, likedStorageKey])
+
+  useEffect(() => {
+    if (!user) { setUnreadNotifications(0); return }
+    let alive = true
+    const loadUnread = () => {
+      fetch('/api/notifications', { credentials: 'include' })
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => { if (alive) setUnreadNotifications(Number(data?.unread) || 0) })
+        .catch(() => {})
+    }
+    loadUnread()
+    const timer = setInterval(loadUnread, 8000)
+    const clear = () => setUnreadNotifications(0)
+    window.addEventListener('notifications-read', clear)
+    return () => { alive = false; clearInterval(timer); window.removeEventListener('notifications-read', clear) }
+  }, [user])
+
+  const handleSearch = () => {
+    setView('browse')
+    window.scrollTo({ top: 0, behavior: 'auto' })
+  }
+
+  const openNotifications = () => {
+    if (!user) {
+      setAuthOpen(true)
+      toast('سجل الدخول لرؤية الإشعارات', 'info')
+      return
+    }
+    setView('notifications')
+    window.scrollTo({ top: 0, behavior: 'auto' })
+  }
+
+  const handleCreateAd = () => {
+    fetch('/api/listings').then(r => r.json()).then(rows => {
+      if (Array.isArray(rows)) setAds(rows.map(mapApiAd))
+    }).catch(() => {})
+    setActiveCategory(null)
+    setView('browse')
+    window.scrollTo({ top: 0, behavior: 'auto' })
+    toast('تم نشر اعلانك بنجاح ✓', 'success')
+  }
+
+  const requireLoginAndPost = () => {
+    if (user) {
+      setPostOpen(true)
+      return
+    }
+    authActionRef.current = () => setPostOpen(true)
+    setAuthOpen(true)
+  }
+
+  const handleAuthSuccess = (nextUser) => {
+    try {
+      localStorage.removeItem('bazaar-liked-ads:guest')
+      if (nextUser?.id) localStorage.removeItem(`bazaar-liked-ads:${nextUser.id}`)
+    } catch {}
+    setUser(nextUser)
+    setLikedCount(0)
+    setUnreadNotifications(0)
+    const action = authActionRef.current
+    authActionRef.current = null
+    action?.()
+  }
+
+  const closeAuth = () => {
+    authActionRef.current = null
+    setAuthOpen(false)
+  }
+
+  const handleLogout = () => {
+    fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {})
+    try {
+      if (user?.id) localStorage.removeItem(`bazaar-liked-ads:${user.id}`)
+    } catch {}
+    setUser(null)
+    setLikedCount(0)
+    setUnreadNotifications(0)
+    toast('تم تسجيل الخروج', 'info')
+  }
+
+  if (view === 'admin-login') {
+    return (
+      <>
+        <Header onHome={goHome} onMenu={()=>setSidebarOpen(true)} onNotifications={()=>{}} onMessages={()=>{}} likedCount={0} user={adminUser} />
+        <AdminLogin onSuccess={(u)=>{ setAdminUser(u); setView('admin'); window.history.pushState(null,'','/admin') }} />
+        <Footer />
+        <BottomBar city={city} onCityChange={setCity} onHome={goHome} onPostAd={requireLoginAndPost} user={user} onLogout={handleLogout} onMessages={() => openMessages(null)} />
+      </>
+    )
+  }
+
+  if (view === 'admin') {
+    return (
+      <>
+        <Header onHome={goHome} onMenu={()=>setSidebarOpen(true)} onNotifications={()=>{}} onMessages={()=>{}} likedCount={0} user={adminUser} />
+        <AdminDashboard onLogout={()=>{ setAdminUser(null); setView('admin-login'); window.history.pushState(null,'','/admin') }} />
+        <Footer />
+        <BottomBar city={city} onCityChange={setCity} onHome={goHome} onPostAd={requireLoginAndPost} user={user} onLogout={handleLogout} onMessages={() => openMessages(null)} />
+      </>
+    )
+  }
+
+  return (
+    <>
+      <Header onHome={goHome} onMenu={()=>setSidebarOpen(true)} onNotifications={openNotifications} onMessages={() => openMessages(null)} likedCount={unreadNotifications} user={user} />
+      {serverOffline && (
+        <div className="server-banner">
+          الخادم غير متصل حاليا — اعلاناتك المحفوظة ستظهر عند عودة الاتصال. شغل السيرفر: <b>node server.js</b> داخل مجلد <b>server</b>
+        </div>
+      )}
+      <Sidebar open={sidebarOpen} onClose={()=>setSidebarOpen(false)} city={city} onCityChange={setCity} user={user} onSetUser={setUser} onLogout={handleLogout} onRequireAuth={()=>setAuthOpen(true)} />
+      <PostAdModal open={postOpen} onClose={()=>setPostOpen(false)} onCreate={handleCreateAd} />
+      <AuthModal open={authOpen} onClose={closeAuth} onSuccess={handleAuthSuccess} />
+
+      <main>
+        {view === 'home' && (
+          <>
+            <Hero
+              searchQuery={searchQuery}
+              onSearchChange={setSearchQuery}
+              onSearch={handleSearch}
+              total={ads.length}
+              quickCategories={categories}
+              onQuickCategory={goBrowse}
+            />
+            {/* شريط الستوريات - للمسجلين فقط مثل فيسبوك */}
+            <StoriesBar user={user} />
+            {loading ? (
+              <section className="section">
+                <div className="container">
+                  <div className="feed">
+                    {[0, 1, 2].map(i => <SkeletonCard key={i} />)}
+                  </div>
+                </div>
+              </section>
+            ) : (
+            <>
+            {featuredAds.length > 0 && (
+            <section className="section">
+              <div className="container">
+                <div style={{textAlign:'center', marginBottom:'16px'}}>
+                  <h2 className="section-title">اعلانات مميزة</h2>
+                  <div className="red-line small" style={{margin:'8px auto 0'}}></div>
+                  <p className="section-sub">مختارة لك</p>
+                </div>
+                <div className="feed">
+                   {featuredAds.map((ad) => (<AdCard key={ad.id} ad={ad} userId={user?.id} onClick={openAd} onAvatar={openSellerProfile} />))}
+                </div>
+              </div>
+            </section>
+            )}
+            {latestAds.length > 0 && (
+            <section className="section">
+              <div className="container">
+                <div style={{textAlign:'center', marginBottom:'16px'}}>
+                  <h2 className="section-title">احدث الاعلانات</h2>
+                  <div className="red-line small" style={{margin:'8px auto 0'}}></div>
+                </div>
+                <div className="feed">
+                   {latestAds.map((ad) => (<AdCard key={ad.id} ad={ad} userId={user?.id} onClick={openAd} onAvatar={openSellerProfile} />))}
+                </div>
+              </div>
+            </section>
+            )}
+            {featuredAds.length === 0 && latestAds.length === 0 && (
+              <section className="section">
+                <div className="container">
+                  <div className="empty-state">
+                    <span className="empty-icon" aria-hidden="true">📭</span>
+                    <h3>لا توجد اعلانات بعد</h3>
+                    <p>كن اول من ينشر اعلانا في السوق</p>
+                    <button type="button" className="btn btn-primary" onClick={requireLoginAndPost}>+ اضف اعلانك</button>
+                  </div>
+                </div>
+              </section>
+            )}
+            </>
+            )}
+          </>
+        )}
+
+        {view === 'browse' && (
+          <AdGrid ads={filteredAds} category={activeCategory} city={city} activeCategory={activeCategory} loading={loading} userId={user?.id} onCategoryChange={(c) => setActiveCategory(c)} onCityChange={setCity} onOpen={openAd} onAvatar={openSellerProfile} onResetFilters={() => { setActiveCategory(null); setCity('all'); setSearchQuery('') }} />
+        )}
+
+        {view === 'detail' && (<AdDetail ad={selectedAd} onBack={() => goBrowse(activeCategory)} />)}
+
+        {view === 'profile' && (
+          <SellerProfile
+            seller={profileSeller}
+            user={user}
+            onBack={goHome}
+            onOpenAd={openAd}
+            onSeller={openSellerProfile}
+            onMessage={openMessages}
+            userId={user?.id}
+          />
+        )}
+
+        {view === 'messages' && (
+          <div className="messages-screen">
+            <Messages
+              user={user}
+              initialPeer={msgPeer}
+              onRequireAuth={() => setAuthOpen(true)}
+            />
+          </div>
+        )}
+
+        {view === 'favorites' && (
+          <section className="section">
+            <div className="container">
+              <button type="button" className="back-btn" onClick={goHome} aria-label="رجوع" title="رجوع"><ArrowBackIcon size={20} /></button>
+              <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                <h2 className="section-title">الاعجابات</h2>
+                <div className="red-line small" style={{ margin: '8px auto 0' }}></div>
+                <p className="section-sub">الاعلانات التي اعجبتك</p>
+              </div>
+              {likedAds.length === 0 ? (
+                <div className="empty-state">
+                  <span className="empty-icon" aria-hidden="true">❤️</span>
+                  <h3>لا يوجد اعجابات بعد</h3>
+                  <p>اضغط القلب في اي اعلان ليظهر هنا</p>
+                  <button type="button" className="btn btn-primary" onClick={goHome}>تصفح الاعلانات</button>
+                </div>
+              ) : (
+                <div className="feed">
+                  {likedAds.map((ad) => (
+                    <AdCard key={ad.id} ad={ad} userId={user?.id} onClick={openAd} onAvatar={openSellerProfile} />
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {view === 'notifications' && <NotificationCenter onBack={goHome} />}
+      </main>
+
+      {view !== 'messages' && <BackToTop />}
+      {view !== 'messages' && <Footer />}
+      {view !== 'messages' && <BottomBar city={city} onCityChange={setCity} onHome={goHome} onPostAd={requireLoginAndPost} user={user} onLogout={handleLogout} onSetUser={setUser} onMessages={() => openMessages(null)} />}
+    </>
+  )
+}
+
+function mapApiAd(l) {
+  const all = (l.images || []).filter(Boolean)
+  const videos = all.filter(p => /\.(mp4|webm|mov|m4v)$/i.test(p))
+  const imgs = all.filter(p => !/\.(mp4|webm|mov|m4v)$/i.test(p))
+  return {
+    id: l.id,
+    title: l.title,
+    description: l.description,
+    price: l.price,
+    category: l.category_id,
+    city: l.city_id,
+    phone: l.phone || '',
+    seller_id: l.user_id || null,
+    seller_name: l.seller_name || 'بائع',
+    seller_email: l.seller_email || null,
+    seller_avatar: l.seller_avatar || null,
+    seller_verified: Boolean(l.seller_verified),
+    likes: l.likes || 0,
+    featured: Boolean(l.featured),
+    date: (l.created_at || '').slice(0, 10),
+    image: imgs[0] || null,
+    images: imgs,
+    video: videos[0] || null,
+    mediaType: videos[0] ? 'video' : (imgs[0] ? 'image' : null),
+  }
+}
+
+export default function App() {
+  return (
+    <>
+      <Toasts />
+      <AppContent />
+    </>
+  )
+}
