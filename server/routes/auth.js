@@ -36,7 +36,7 @@ router.post('/register', rateLimit({ max: 5 }), (req, res) => {
   const token = signToken({ id, role: 'user' })
   res.cookie('session', token, {
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000,
     secure: process.env.NODE_ENV === 'production',
   })
@@ -60,7 +60,7 @@ router.post('/login', rateLimit({ max: 5 }), (req, res) => {
   const token = signToken({ id: user.id, role: user.role })
   res.cookie('session', token, {
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000,
     secure: process.env.NODE_ENV === 'production',
   })
@@ -68,7 +68,11 @@ router.post('/login', rateLimit({ max: 5 }), (req, res) => {
 })
 
 router.post('/logout', (_req, res) => {
-  res.clearCookie('session', { httpOnly: true, sameSite: 'lax' })
+  res.clearCookie('session', {
+    httpOnly: true,
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  })
   res.json({ ok: true })
 })
 
