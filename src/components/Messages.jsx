@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState, useRef, useCallback } from 'react'
 import { toast } from './Toast.jsx'
+import { API_ORIGIN } from '../config.js'
 import {
   ArrowBackIcon, VerifiedIcon, SendIcon, PaperclipIcon, MicIcon,
   PhoneIcon, VideoCamIcon, FileIcon, XIcon, ImageFileIcon, PhoneOffIcon,
@@ -342,8 +343,7 @@ export default function Messages({ user, initialPeer, onBack, onRequireAuth }) {
     let retry = null
     const connect = () => {
       if (closed) return
-      const proto = window.location.protocol === 'https:' ? 'wss' : 'ws'
-      const ws = new WebSocket(`${proto}://${window.location.host}/ws`)
+      const ws = new WebSocket(`${API_ORIGIN.replace(/^http/, 'ws')}/ws`)
       wsRef.current = ws
       ws.onopen = () => setConn(true)
       ws.onclose = () => {
