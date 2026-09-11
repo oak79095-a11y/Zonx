@@ -22,7 +22,7 @@ import { verifyToken } from './utils/auth.js'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 5199
 const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production'
-  ? 'https://oak79095-a11y.github.io/Zonx'
+  ? 'https://oak79095-a11y.github.io'
   : 'http://localhost:5199')
 const frontendPath = path.join(__dirname, '..', 'dist')
 
