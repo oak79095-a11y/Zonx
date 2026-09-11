@@ -4,12 +4,11 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import jwt from 'jsonwebtoken'
 
-if (process.env.NODE_ENV === 'production' && (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32)) {
-  throw new Error('JWT_SECRET must be set to at least 32 characters in production')
-}
-
 function getDevelopmentSecret() {
-  const secretPath = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data', '.jwt-secret')
+  const dataDirectory = process.env.DB_PATH
+    ? path.dirname(process.env.DB_PATH)
+    : path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'data')
+  const secretPath = path.join(dataDirectory, '.jwt-secret')
   try {
     const saved = fs.readFileSync(secretPath, 'utf8').trim()
     if (saved.length >= 32) return saved
