@@ -19,6 +19,7 @@ import Toasts, { toast } from './components/Toast.jsx'
 import { ArrowBackIcon } from './components/icons.jsx'
 import { ads as initialAds } from './data/ads.js'
 import { categories, categoryIcon } from './data/catalog.js'
+import { mediaUrl } from './config.js'
 
 function BackToTop() {
   const [show, setShow] = useState(false)
@@ -428,7 +429,7 @@ function AppContent() {
 }
 
 function mapApiAd(l) {
-  const all = (l.images || []).filter(Boolean)
+  const all = (l.images || []).filter(Boolean).map(mediaUrl)
   const videos = all.filter(p => /\.(mp4|webm|mov|m4v)$/i.test(p))
   const imgs = all.filter(p => !/\.(mp4|webm|mov|m4v)$/i.test(p))
   return {
@@ -442,7 +443,7 @@ function mapApiAd(l) {
     seller_id: l.user_id || null,
     seller_name: l.seller_name || 'بائع',
     seller_email: l.seller_email || null,
-    seller_avatar: l.seller_avatar || null,
+    seller_avatar: mediaUrl(l.seller_avatar),
     seller_verified: Boolean(l.seller_verified),
     likes: l.likes || 0,
     featured: Boolean(l.featured),

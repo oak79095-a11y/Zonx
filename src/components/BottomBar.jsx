@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { cities } from '../data/catalog.js'
+import { mediaUrl } from '../config.js'
 import EditProfileModal from './EditProfileModal.jsx'
 
 function HomeIcon() {
@@ -211,7 +212,7 @@ export default function BottomBar({ city, onCityChange, onHome, onPostAd, user, 
           title={user ? 'حسابي' : 'تسجيل الدخول'}
         >
           {user && user.avatar ? (
-            <img className="bb-avatar" src={user.avatar} alt={user.name} />
+            <img className="bb-avatar" src={mediaUrl(user.avatar)} alt={user.name} />
           ) : user ? (
             <span className="bb-avatar bb-avatar-fallback">{(user.name || 'ب').slice(0, 1)}</span>
           ) : (
@@ -222,7 +223,7 @@ export default function BottomBar({ city, onCityChange, onHome, onPostAd, user, 
           <div className="bb-menu">
             <div className="bb-menu-head">
               {user.avatar
-                ? <img src={user.avatar} alt="" />
+                ? <img src={mediaUrl(user.avatar)} alt="" />
                 : <span className="bb-avatar bb-avatar-fallback">{(user.name || 'ب').slice(0, 1)}</span>}
               <div>
                 <div className="bb-menu-name">{user.name}</div>

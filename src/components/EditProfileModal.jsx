@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import useOverlay from '../hooks/useOverlay.js'
+import { mediaUrl } from '../config.js'
 
 export default function EditProfileModal({ open, onClose, user, onSuccess }) {
   const [name, setName] = useState('')
@@ -120,7 +121,7 @@ export default function EditProfileModal({ open, onClose, user, onSuccess }) {
         <form onSubmit={saveInfo} className="modal-body">
           <div className="ep-avatar-wrap">
             <button type="button" className="ep-avatar" onClick={() => fileRef.current?.click()} aria-label="تغيير الصورة">
-              {avatarPreview ? <img src={avatarPreview} alt="صورتي" /> : user?.avatar ? <img src={user.avatar} alt="صورتي" /> : <span>📷</span>}
+              {avatarPreview ? <img src={avatarPreview} alt="صورتي" /> : user?.avatar ? <img src={mediaUrl(user.avatar)} alt="صورتي" /> : <span>📷</span>}
               <span className="ep-avatar-edit">✎</span>
             </button>
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickAvatar} />

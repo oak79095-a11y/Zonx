@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { cities } from '../data/catalog.js'
 import useOverlay from '../hooks/useOverlay.js'
 import EditProfileModal from './EditProfileModal.jsx'
+import { mediaUrl } from '../config.js'
 import PlansModal from './PlansModal.jsx'
 import { setToastsEnabled } from './Toast.jsx'
 
@@ -158,7 +159,7 @@ export default function Sidebar({ open, onClose, city, onCityChange, user, onSet
                   <>
                     <button type="button" className={'acc-main' + (accountOpen ? ' expanded' : '')} onClick={() => setAccountOpen(o => !o)}>
                       <span className="acc-avatar">
-                        {user.avatar ? <img src={user.avatar} alt={user.name} /> : (user.name || 'ب').slice(0, 1)}
+                        {user.avatar ? <img src={mediaUrl(user.avatar)} alt={user.name} /> : (user.name || 'ب').slice(0, 1)}
                       </span>
                       <span className="set-row-text">
                         <span className="set-row-name">{user.name}</span>

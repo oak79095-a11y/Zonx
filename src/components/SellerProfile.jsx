@@ -15,11 +15,12 @@ function ChatIcon({ size = 18 }) {
 }
 import { formatPrice, formatDate } from '../data/format.js'
 import { cityName, categoryIcon } from '../data/catalog.js'
+import { mediaUrl } from '../config.js'
 
 const VIDEO_EXT = /\.(mp4|webm|mov|m4v)$/i
 
 function mapApiAd(l) {
-  const all = (l.images || []).filter(Boolean)
+  const all = (l.images || []).filter(Boolean).map(mediaUrl)
   const videos = all.filter((p) => VIDEO_EXT.test(p))
   const imgs = all.filter((p) => !VIDEO_EXT.test(p))
   return {
@@ -33,7 +34,7 @@ function mapApiAd(l) {
     seller_id: l.user_id || l.seller_id || null,
     seller_name: l.seller_name || 'بائع',
     seller_email: l.seller_email || null,
-    seller_avatar: l.seller_avatar || null,
+    seller_avatar: mediaUrl(l.seller_avatar),
     seller_verified: Boolean(l.seller_verified),
     likes: l.likes || 0,
     featured: Boolean(l.featured),

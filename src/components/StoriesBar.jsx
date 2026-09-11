@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { toast } from './Toast.jsx'
 import { VerifiedIcon, ZonxMark } from './icons.jsx'
+import { mediaUrl } from '../config.js'
 
 const VIDEO_EXT = /\.(mp4|webm|mov|m4v)$/i
 
@@ -17,7 +18,7 @@ export default function StoriesBar({ user }) {
   const load = useCallback(() => {
     fetch('/api/stories', { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : []))
-      .then((rows) => setStories(Array.isArray(rows) ? rows : []))
+      .then((rows) => setStories(Array.isArray(rows) ? rows.map((story) => ({ ...story, media: mediaUrl(story.media), user_avatar: mediaUrl(story.user_avatar) })) : []))
       .catch(() => {})
   }, [])
 
@@ -32,9 +33,9 @@ export default function StoriesBar({ user }) {
            user_id: s.user_id,
            user_name: s.user_name,
            user_email: s.user_email,
-          user_avatar: s.user_avatar,
-          mine: s.mine,
-          thumb: s.media_type === 'video' ? null : s.media,
+           user_avatar: mediaUrl(s.user_avatar),
+           mine: s.mine,
+           thumb: s.media_type === 'video' ? null : mediaUrl(s.media),
           items: [],
         })
       } else if (s.media_type !== 'video') {

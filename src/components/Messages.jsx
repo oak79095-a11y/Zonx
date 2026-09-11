@@ -1,6 +1,6 @@
 ﻿import { useEffect, useState, useRef, useCallback } from 'react'
 import { toast } from './Toast.jsx'
-import { API_ORIGIN } from '../config.js'
+import { API_ORIGIN, mediaUrl } from '../config.js'
 import {
   ArrowBackIcon, VerifiedIcon, SendIcon, PaperclipIcon, MicIcon,
   PhoneIcon, VideoCamIcon, FileIcon, XIcon, ImageFileIcon, PhoneOffIcon,
@@ -29,7 +29,7 @@ function fmtSize(bytes) {
 }
 
 function Avatar({ name, avatar, size = 44 }) {
-  if (avatar) return <img className="msg-avatar" style={{ width: size, height: size }} src={avatar} alt={name} />
+  if (avatar) return <img className="msg-avatar" style={{ width: size, height: size }} src={mediaUrl(avatar)} alt={name} />
   return (
     <span className="msg-avatar empty" style={{ width: size, height: size, fontSize: size * 0.4 }}>
       {(name || '؟').trim().charAt(0)}
@@ -361,7 +361,7 @@ export default function Messages({ user, initialPeer, onBack, onRequireAuth }) {
               ...c,
               messages: [...c.messages, {
                 id: data.id, from: 'them', text: data.text,
-                media: data.media, media_type: data.media_type,
+                media: mediaUrl(data.media), media_type: data.media_type,
                 media_name: data.media_name, media_size: data.media_size, at: data.at,
               }],
             } : c)
@@ -372,7 +372,7 @@ export default function Messages({ user, initialPeer, onBack, onRequireAuth }) {
               if (idx === -1) {
                 return [{ id: data.conversation_id, user: from, last_text: data.text, last_media_type: data.media_type, last_at: data.at, unread: 1 }, ...list]
               }
-              const item = { ...list[idx], last_text: data.text, last_media_type: data.media_type, last_at: data.at, unread: (list[idx].unread || 0) + 1 }
+                const item = { ...list[idx], last_text: data.text, last_media_type: data.media_type, last_at: data.at, unread: (list[idx].unread || 0) + 1 }
               const next = [...list]
               next.splice(idx, 1)
               return [item, ...next]

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ArrowBackIcon } from './icons.jsx'
+import { mediaUrl } from '../config.js'
 
 function timeOf(value) {
   try {
@@ -43,7 +44,7 @@ export default function NotificationCenter({ onBack }) {
           <div className="notification-list">
             {items.map((item) => (
               <article className={'notification-item' + (!item.read_at ? ' unread' : '')} key={item.id}>
-                <span className="notification-avatar">{item.actor_avatar ? <img src={item.actor_avatar} alt="" /> : (item.actor_name || 'م').slice(0, 1)}</span>
+                <span className="notification-avatar">{item.actor_avatar ? <img src={mediaUrl(item.actor_avatar)} alt="" /> : (item.actor_name || 'م').slice(0, 1)}</span>
                 <div className="notification-copy"><b>{item.message}</b><small>{timeOf(item.created_at)}</small></div>
               </article>
             ))}
