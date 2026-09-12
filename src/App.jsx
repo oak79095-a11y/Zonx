@@ -20,6 +20,9 @@ import { ArrowBackIcon } from './components/icons.jsx'
 import { ads as initialAds } from './data/ads.js'
 import { categories, categoryIcon } from './data/catalog.js'
 import { mediaUrl } from './config.js'
+import { useGlobalWs } from './hooks/useGlobalWs.js'
+
+const PAGE_SIZE = 24
 
 function BackToTop() {
   const [show, setShow] = useState(false)
@@ -71,6 +74,101 @@ function AppContent() {
   const [serverOffline, setServerOffline] = useState(false)
   const [loading, setLoading] = useState(true)
 
+  const likedStorageKey = `bazaar-liked-ads:${user?.id || 'guest'}`
+  const [likedCount, setLikedCount] = useState(0)
+  const [unreadNotifications, setUnreadNotifications] = useState(0)
+
+  // Browse state (server-side pagination/filtering/search)
+  const [browseAds, setBrowseAds] = useState([])
+  const [browseHasMore, setBrowseHasMore] = useState(false)
+  const [browseLoading, setBrowseLoading] = useState(false)
+  const [browseRefresh, setBrowseRefresh] = useState(0)
+  const browseOffsetRef = useRef(0)
+  const [searchDebounced, setSearchDebounced] = useState('')
+
+  // Favorites (server-side fetch by ids)
+  const [favAds, setFavAds] = useState([])
+
+  // Global WS for badges (replaces 8s polling)
+  useGlobalWs(user?.id)
+
+  // Debounce search input
+  useEffect(() => {
+    const t = setTimeout(() => setSearchDebounced(searchQuery.trim()), 300)
+    return () => clearTimeout(t)
+  }, [searchQuery])
+
+  // Fetch browse page when view/filters change
+  useEffect(() => {
+    if (view !== 'browse') return
+    const params = new URLSearchParams()
+    params.set('limit', String(PAGE_SIZE))
+    params.set('offset', '0')
+    if (activeCategory) params.set('category', activeCategory)
+    if (city !== 'all') params.set('city', city)
+    if (searchDebounced) params.set('q', searchDebounced)
+    setBrowseLoading(true)
+    fetch(`/api/listings?${params.toString()}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(rows => {
+        const list = Array.isArray(rows) ? rows.map(mapApiAd) : []
+        setBrowseAds(list)
+        browseOffsetRef.current = list.length
+        setBrowseHasMore(list.length === PAGE_SIZE)
+      })
+      .catch(() => { setBrowseAds([]); setBrowseHasMore(false) })
+      .finally(() => setBrowseLoading(false))
+  }, [view, activeCategory, city, searchDebounced, browseRefresh])
+
+  const loadMore = () => {
+    if (browseLoading || !browseHasMore) return
+    const params = new URLSearchParams()
+    params.set('limit', String(PAGE_SIZE))
+    params.set('offset', String(browseOffsetRef.current))
+    if (activeCategory) params.set('category', activeCategory)
+    if (city !== 'all') params.set('city', city)
+    if (searchDebounced) params.set('q', searchDebounced)
+    setBrowseLoading(true)
+    fetch(`/api/listings?${params.toString()}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(rows => {
+        const list = Array.isArray(rows) ? rows.map(mapApiAd) : []
+        setBrowseAds(prev => {
+          const seen = new Set(prev.map(a => a.id))
+          return [...prev, ...list.filter(a => !seen.has(a.id))]
+        })
+        browseOffsetRef.current += list.length
+        setBrowseHasMore(list.length === PAGE_SIZE)
+      })
+      .catch(() => {})
+      .finally(() => setBrowseLoading(false))
+  }
+
+  // Favorites: fetch liked ads from server (not just loaded page)
+  useEffect(() => {
+    if (view !== 'favorites') return
+    let alive = true
+    const load = () => {
+      let ids = []
+      try { ids = JSON.parse(localStorage.getItem(likedStorageKey) || '[]') } catch {}
+      if (!ids.length) { setFavAds([]); return }
+      fetch(`/api/listings?ids=${ids.slice(0, 60).join(',')}`)
+        .then(r => r.ok ? r.json() : [])
+        .then(rows => { if (alive) setFavAds(Array.isArray(rows) ? rows.map(mapApiAd) : []) })
+        .catch(() => { if (alive) setFavAds([]) })
+    }
+    load()
+    window.addEventListener('bazaar-liked-changed', load)
+    return () => { alive = false; window.removeEventListener('bazaar-liked-changed', load) }
+  }, [view, likedStorageKey])
+
+  // Notification badge via WS (fallback: slow poll below)
+  useEffect(() => {
+    const onNotify = (e) => setUnreadNotifications(Number(e.detail?.unread) || 0)
+    window.addEventListener('ws-notification', onNotify)
+    return () => window.removeEventListener('ws-notification', onNotify)
+  }, [])
+
   useEffect(() => {
     if (isAdminPath) {
       fetch('/api/auth/me', { credentials: 'include' }).then(r=>r.json()).then(u=>{
@@ -97,19 +195,6 @@ function AppContent() {
       .catch(() => setServerOffline(true))
       .finally(() => setLoading(false))
   }, [])
-
-  const filteredAds = useMemo(() => {
-    return ads.filter((ad) => {
-      if (activeCategory && ad.category !== activeCategory) return false
-      if (city !== 'all' && ad.city !== city) return false
-      if (searchQuery.trim()) {
-        const q = searchQuery.trim()
-        const haystack = ad.title + ' ' + ad.description
-        if (!haystack.includes(q)) return false
-      }
-      return true
-    })
-  }, [ads, activeCategory, city, searchQuery])
 
   const featuredAds = useMemo(() => ads.filter((a) => a.featured), [ads])
   const latestAds = useMemo(() => ads.slice(0, 8), [ads])
@@ -162,16 +247,6 @@ function AppContent() {
     window.scrollTo({ top: 0, behavior: 'auto' })
   }
 
-  const likedStorageKey = `bazaar-liked-ads:${user?.id || 'guest'}`
-  let likedAds = []
-  if (view === 'favorites') {
-    let ids = []
-    try { ids = JSON.parse(localStorage.getItem(likedStorageKey) || '[]') } catch {}
-    likedAds = ads.filter((a) => ids.includes(a.id))
-  }
-
-  const [likedCount, setLikedCount] = useState(0)
-  const [unreadNotifications, setUnreadNotifications] = useState(0)
   useEffect(() => {
     const refresh = () => {
       let ids = []
@@ -193,7 +268,7 @@ function AppContent() {
         .catch(() => {})
     }
     loadUnread()
-    const timer = setInterval(loadUnread, 8000)
+    const timer = setInterval(loadUnread, 60000)
     const clear = () => setUnreadNotifications(0)
     window.addEventListener('notifications-read', clear)
     return () => { alive = false; clearInterval(timer); window.removeEventListener('notifications-read', clear) }
@@ -364,7 +439,7 @@ function AppContent() {
         )}
 
         {view === 'browse' && (
-          <AdGrid ads={filteredAds} category={activeCategory} city={city} activeCategory={activeCategory} loading={loading} userId={user?.id} onCategoryChange={(c) => setActiveCategory(c)} onCityChange={setCity} onOpen={openAd} onAvatar={openSellerProfile} onResetFilters={() => { setActiveCategory(null); setCity('all'); setSearchQuery('') }} />
+          <AdGrid ads={browseAds} category={activeCategory} city={city} activeCategory={activeCategory} loading={browseLoading} userId={user?.id} onCategoryChange={(c) => setActiveCategory(c)} onCityChange={setCity} onOpen={openAd} onAvatar={openSellerProfile} onResetFilters={() => { setActiveCategory(null); setCity('all'); setSearchQuery('') }} hasMore={browseHasMore} onLoadMore={loadMore} />
         )}
 
         {view === 'detail' && (<AdDetail ad={selectedAd} onBack={() => goBrowse(activeCategory)} />)}
@@ -400,7 +475,7 @@ function AppContent() {
                 <div className="red-line small" style={{ margin: '8px auto 0' }}></div>
                 <p className="section-sub">الاعلانات التي اعجبتك</p>
               </div>
-              {likedAds.length === 0 ? (
+              {favAds.length === 0 ? (
                 <div className="empty-state">
                   <span className="empty-icon" aria-hidden="true">❤️</span>
                   <h3>لا يوجد اعجابات بعد</h3>
@@ -409,7 +484,7 @@ function AppContent() {
                 </div>
               ) : (
                 <div className="feed">
-                  {likedAds.map((ad) => (
+                  {favAds.map((ad) => (
                     <AdCard key={ad.id} ad={ad} userId={user?.id} onClick={openAd} onAvatar={openSellerProfile} />
                   ))}
                 </div>

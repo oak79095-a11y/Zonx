@@ -1,18 +1,27 @@
 import { getDb } from '../db.js'
+import { cacheInvalidate } from './cache.js'
 
-// Refresh expiration state at most once per interval under concurrent traffic.
-let lastListingExpirationAt = 0
+// Expiration runs periodically (not per request) to keep writes off the hot path.
+const EXPIRE_INTERVAL_MS = 5 * 60 * 1000
+let timer = null
 
 export function expireListings(db) {
-  const timestamp = Date.now()
-  // Avoid issuing a write on every concurrent catalog request.
-  if (timestamp - lastListingExpirationAt < 30_000) return
-  lastListingExpirationAt = timestamp
   const now = new Date().toISOString()
-  db.prepare(
+  const result = db.prepare(
     `UPDATE listings SET status='expired', updated_at=datetime('now')
      WHERE status='active' AND expires_at IS NOT NULL AND expires_at < ?`
   ).run(now)
+  // Freshness matters only when something actually changed.
+  if (result.changes) cacheInvalidate('listings:')
+  return result.changes
+}
+
+export function startExpirationJob() {
+  if (timer) return
+  timer = setInterval(() => {
+    try { expireListings(getDb()) } catch {}
+  }, EXPIRE_INTERVAL_MS)
+  if (typeof timer.unref === 'function') timer.unref()
 }
 
 export function expireSubscription(db, subId) {

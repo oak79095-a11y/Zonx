@@ -6,8 +6,17 @@ import { makeId } from '../utils/auth.js'
 import { saveFile, deleteFile, MAX_FILES, ALLOWED_TYPES, MAX_FILE_SIZE } from '../services/storage.js'
 import { listingUpload, singleUpload, uploadHandler } from '../middleware/upload.js'
 import { createNotification } from '../services/notifications.js'
+import { cacheGet, cacheSet, cacheInvalidate } from '../services/cache.js'
+import { countView, pendingViewsOf } from '../services/views.js'
 
 const router = Router()
+const LIST_CACHE_PREFIX = 'listings:'
+const LIST_CACHE_TTL_MS = 5000
+
+// Public list responses are cached for a few seconds; any mutation drops them.
+export function invalidateListingsCache() {
+  cacheInvalidate(LIST_CACHE_PREFIX)
+}
 
 function validateListing(body) {
   const { title, description, price, category_id, city_id } = body || {}
@@ -42,26 +51,52 @@ router.post('/', authenticate, (req, res) => {
   const id = makeId()
   const expiresAt = new Date(Date.now() + settings.free_listing_days * 24 * 60 * 60 * 1000).toISOString()
   db.prepare(`INSERT INTO listings(id,user_id,title,description,price,category_id,city_id,status,phone,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?)`).run(id, userId, title.trim(), description.trim(), Number(price), category_id, city_id, 'active', String(phone || '').trim() || null, expiresAt)
+  invalidateListingsCache()
   res.status(201).json({ id, status: 'active', expires_at: expiresAt })
 })
 
-// قائمة عامة بالاعلانات النشطة
+// قائمة عامة بالاعلانات النشطة — فلترة وبحث وصفحات من جهة الخادم
 router.get('/', (req, res) => {
   const db = getDb()
   const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 40, 1), 60)
   const offset = Math.max(Number.parseInt(req.query.offset, 10) || 0, 0)
   const sellerId = String(req.query.user_id || '').trim() || null
+  const categoryId = String(req.query.category || '').trim() || null
+  const cityId = String(req.query.city || '').trim() || null
+  const q = String(req.query.q || '').trim().slice(0, 60) || null
+  const ids = String(req.query.ids || '').split(',').map((s) => s.trim()).filter((s) => /^[\w-]{6,64}$/.test(s)).slice(0, 60)
+
+  const cacheKey = `${LIST_CACHE_PREFIX}${limit}:${offset}:${sellerId || ''}:${categoryId || ''}:${cityId || ''}:${q || ''}:${ids.join(',')}`
+  const cached = cacheGet(cacheKey)
+  if (cached) return res.json(cached)
+
+  const where = ["l.status = 'active'"]
+  const params = []
+  if (ids.length) {
+    where.push(`l.id IN (${ids.map(() => '?').join(',')})`)
+    params.push(...ids)
+  }
+  if (sellerId) { where.push('l.user_id = ?'); params.push(sellerId) }
+  if (categoryId) { where.push('l.category_id = ?'); params.push(categoryId) }
+  if (cityId) { where.push('l.city_id = ?'); params.push(cityId) }
+  if (q) {
+    where.push("(l.title LIKE ? ESCAPE '\\' OR l.description LIKE ? ESCAPE '\\')")
+    const like = '%' + q.replace(/[\\%_]/g, (ch) => `\\${ch}`) + '%'
+    params.push(like, like)
+  }
   const rows = db.prepare(`
      SELECT l.*, u.name as seller_name, u.avatar as seller_avatar, u.verified as seller_verified, GROUP_CONCAT(li.path, '|') as images
      FROM listings l
      LEFT JOIN listing_images li ON li.listing_id = l.id
      LEFT JOIN users u ON u.id = l.user_id
-     WHERE l.status = 'active' AND (? IS NULL OR l.user_id = ?)
+     WHERE ${where.join(' AND ')}
      GROUP BY l.id
      ORDER BY l.featured DESC, l.created_at DESC
      LIMIT ? OFFSET ?
-   `).all(sellerId, sellerId, limit, offset)
-  res.json(rows.map(mapListing))
+   `).all(...params, limit, offset)
+  const out = rows.map(mapListing)
+  cacheSet(cacheKey, out, LIST_CACHE_TTL_MS)
+  res.json(out)
 })
 
 // ايكات (تبديل)
@@ -91,6 +126,7 @@ router.post('/:id/like', optionalAuth, rateLimit({ windowMs: 60 * 1000, max: 30 
   }
   const { likes } = db.prepare('SELECT COUNT(*) AS likes FROM listing_likes WHERE listing_id = ?').get(req.params.id)
   db.prepare('UPDATE listings SET likes = ? WHERE id = ?').run(likes, req.params.id)
+  invalidateListingsCache()
   res.json({ likes })
 })
 
@@ -155,6 +191,7 @@ router.post('/:id/images', authenticate, rateLimit({ windowMs: 60 * 1000, max: 1
     for (const file of saved) deleteFile(file.path)
     throw e
   }
+  invalidateListingsCache()
   res.json(saved)
 }))
 
@@ -169,9 +206,12 @@ router.get('/:id', (req, res) => {
   const listing = db.prepare('SELECT * FROM listings WHERE id = ?').get(req.params.id)
   if (!listing) return res.status(404).json({ error: 'غير موجود' })
   if (listing.status !== 'active') return res.status(404).json({ error: 'غير موجود' })
-  db.prepare('UPDATE listings SET views = views + 1 WHERE id = ?').run(req.params.id)
+  // عداد مشاهدات مجمّع: يُحفظ دورياً بدل كتابة لكل مشاهدة
+  countView(req.params.id)
   const images = db.prepare('SELECT path FROM listing_images WHERE listing_id = ? ORDER BY sort_order').all(req.params.id)
-  res.json(mapListing({ ...listing, images: images.map((i) => i.path).join('|') }))
+  const out = mapListing({ ...listing, images: images.map((i) => i.path).join('|') })
+  out.views = (out.views || 0) + pendingViewsOf(req.params.id)
+  res.json(out)
 })
 
 router.put('/:id', authenticate, (req, res) => {
@@ -187,6 +227,7 @@ router.put('/:id', authenticate, (req, res) => {
   if (!db.prepare('SELECT id FROM categories WHERE id = ?').get(category_id)) return res.status(400).json({ error: 'التصنيف غير موجود' })
   if (!db.prepare('SELECT id FROM cities WHERE id = ?').get(city_id)) return res.status(400).json({ error: 'المدينة غير موجودة' })
   db.prepare(`UPDATE listings SET title=?,description=?,price=?,category_id=?,city_id=?,updated_at=datetime('now') WHERE id = ?`).run(title.trim(), description.trim(), Number(price), category_id, city_id, req.params.id)
+  invalidateListingsCache()
   res.json({ id: req.params.id, ok: true })
 })
 
@@ -205,6 +246,7 @@ router.delete('/:id', authenticate, (req, res) => {
     db.exec('ROLLBACK')
     throw e
   }
+  invalidateListingsCache()
   res.json({ ok: true })
 })
 

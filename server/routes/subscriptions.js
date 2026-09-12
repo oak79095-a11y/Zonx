@@ -3,6 +3,7 @@ import { getDb } from '../db.js'
 import { authenticate } from '../middleware/auth.js'
 import { makeId } from '../utils/auth.js'
 import { expireListings, expireSubscription } from '../services/expiration.js'
+import { invalidateListingsCache } from '../routes/listings.js'
 
 const router = Router()
 
@@ -112,6 +113,7 @@ export function activateFeatured(db, paymentId) {
   const until = new Date(Date.now() + s.featured_duration_days * 24 * 60 * 60 * 1000).toISOString()
   db.prepare("UPDATE listings SET featured=1, featured_until=? WHERE id=?").run(until, payment.listing_id)
   db.prepare("UPDATE payments SET status='approved' WHERE id=?").run(paymentId)
+  invalidateListingsCache()
   return { listing_id: payment.listing_id, featured_until: until }
 }
 

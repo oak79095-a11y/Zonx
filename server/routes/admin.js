@@ -5,6 +5,7 @@ import { requireAdmin } from '../middleware/auth.js'
 import { makeId, hashPassword } from '../utils/auth.js'
 import { deleteFile } from '../services/storage.js'
 import { activateFeatured, activateBusiness } from '../routes/subscriptions.js'
+import { invalidateListingsCache } from '../routes/listings.js'
 import { v4 as uuid } from 'uuid'
 import crypto from 'node:crypto'
 
@@ -137,6 +138,7 @@ router.patch('/listings/:id', (req, res) => {
   } else {
     return res.status(400).json({ error: 'حالة غير صحيحة' })
   }
+  invalidateListingsCache()
   res.json({ id: req.params.id, status: status === 'approved' ? 'active' : 'rejected' })
 })
 
@@ -155,6 +157,7 @@ router.delete('/listings/:id', (req, res) => {
     db.exec('ROLLBACK')
     throw e
   }
+  invalidateListingsCache()
   res.json({ ok: true })
 })
 

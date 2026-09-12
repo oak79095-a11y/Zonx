@@ -1,4 +1,5 @@
 import { makeId } from '../utils/auth.js'
+import { pushToUser } from './push.js'
 
 export function createNotification(db, { recipientId, actorId = null, type, entityId = null, message }) {
   if (!recipientId || recipientId === actorId || !type || !message) return null
@@ -6,6 +7,11 @@ export function createNotification(db, { recipientId, actorId = null, type, enti
     INSERT INTO notifications(id, recipient_id, actor_id, type, entity_id, message)
     VALUES(?,?,?,?,?,?)
   `).run(makeId(), recipientId, actorId, type, entityId, message)
+  if (result.changes) {
+    // Push instantly over WS so clients stop polling the unread badge.
+    const unread = unreadNotifications(db, recipientId)
+    pushToUser(recipientId, { type: 'notification', notification_type: type, entity_id: entityId, unread })
+  }
   return result.changes ? result : null
 }
 

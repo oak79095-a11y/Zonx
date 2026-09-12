@@ -17,7 +17,7 @@ import userRoutes from './routes/users.js'
 import messageRoutes from './routes/messages.js'
 import notificationRoutes from './routes/notifications.js'
 import { initWs } from './ws.js'
-import { expireListings } from './services/expiration.js'
+import { expireListings, startExpirationJob } from './services/expiration.js'
 import { verifyToken } from './utils/auth.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -123,6 +123,7 @@ app.use((err, _req, res, _next) => {
 
 const db = initDb()
 expireListings(db)
+startExpirationJob()
 setInterval(() => expireListings(db), 5 * 60 * 1000).unref()
 
 const httpServer = http.createServer(app)

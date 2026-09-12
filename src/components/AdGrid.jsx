@@ -14,7 +14,7 @@ function SkeletonCard() {
   )
 }
 
-export default function AdGrid({ ads, category, city, activeCategory, loading, onCategoryChange, onCityChange, onOpen, onResetFilters, onAvatar, userId }) {
+export default function AdGrid({ ads, category, city, activeCategory, loading, onCategoryChange, onCityChange, onOpen, onResetFilters, onAvatar, userId, hasMore, onLoadMore }) {
   const hasFilters = activeCategory !== null || city !== 'all'
   return (
     <section className="section">
@@ -51,9 +51,18 @@ export default function AdGrid({ ads, category, city, activeCategory, loading, o
             )}
           </div>
         ) : (
-          <div className="feed">
-            {ads.map((ad) => (<AdCard key={ad.id} ad={ad} userId={userId} onClick={onOpen} onAvatar={onAvatar} />))}
-          </div>
+          <>
+            <div className="feed">
+              {ads.map((ad) => (<AdCard key={ad.id} ad={ad} userId={userId} onClick={onOpen} onAvatar={onAvatar} />))}
+            </div>
+            {hasMore && (
+              <div style={{textAlign:'center', marginTop:'20px'}}>
+                <button type="button" className="btn btn-outline" onClick={onLoadMore} disabled={loading}>
+                  {loading ? 'جاري التحميل...' : 'عرض المزيد'}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </section>

@@ -4,6 +4,7 @@ import { getDb } from './db.js'
 import { getOrCreateConversation, insertMessage, markRead } from './services/chat.js'
 import { isStoredUploadPath } from './services/storage.js'
 import { createNotification } from './services/notifications.js'
+import { registerPushSender } from './services/push.js'
 
 function parseSessionCookie(header) {
   if (!header) return null
@@ -31,6 +32,7 @@ export function sendToUser(userId, payload) {
 
 export function initWs(httpServer) {
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' })
+  registerPushSender(sendToUser)
 
   wss.on('connection', (ws, req) => {
     let userId = null

@@ -93,9 +93,12 @@ export default function BottomBar({ city, onCityChange, onHome, onPostAd, user, 
         .then((d) => { if (alive && d) setUnread(d.unread || 0) })
         .catch(() => {})
     }
+    // Initial fetch + WS updates + slow fallback poll
     poll()
-    const timer = setInterval(poll, 8000)
-    return () => { alive = false; clearInterval(timer) }
+    const onMsg = () => poll()
+    window.addEventListener('ws-message', onMsg)
+    const timer = setInterval(poll, 60000)
+    return () => { alive = false; clearInterval(timer); window.removeEventListener('ws-message', onMsg) }
   }, [user])
 
   useEffect(() => {
