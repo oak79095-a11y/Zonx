@@ -13,6 +13,7 @@ import Messages from './components/Messages.jsx'
 import AdminLogin from './components/AdminLogin.jsx'
 import AdminDashboard from './components/AdminDashboard.jsx'
 import NotificationCenter from './components/NotificationCenter.jsx'
+import SocialFeed from './components/SocialFeed.jsx'
 import Hero from './components/Hero.jsx'
 import BottomBar from './components/BottomBar.jsx'
 import Toasts, { toast } from './components/Toast.jsx'
@@ -421,6 +422,7 @@ function AppContent() {
               quickCategories={categories}
               onQuickCategory={goBrowse}
             />
+            <SocialFeed user={user} />
             {/* شريط الستوريات - للمسجلين فقط مثل فيسبوك */}
             <StoriesBar user={user} />
             {loading ? (

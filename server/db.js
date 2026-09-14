@@ -230,6 +230,34 @@ export function initDb() {
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       UNIQUE(listing_id, actor_key)
     );
+
+    CREATE TABLE IF NOT EXISTS posts (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      content TEXT NOT NULL DEFAULT '',
+      media TEXT,
+      media_type TEXT NOT NULL DEFAULT 'text',
+      visibility TEXT NOT NULL DEFAULT 'public',
+      share_count INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS post_likes (
+      id TEXT PRIMARY KEY,
+      post_id TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(post_id, user_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS post_comments (
+      id TEXT PRIMARY KEY,
+      post_id TEXT NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      text TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `)
 
   db.exec(`
@@ -264,6 +292,10 @@ export function initDb() {
     CREATE INDEX IF NOT EXISTS idx_conversations_last_message ON conversations(last_message_at DESC);
     CREATE INDEX IF NOT EXISTS idx_messages_conversation_created ON messages(conversation_id, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_chat_uploads_user_path ON chat_uploads(user_id, path);
+    CREATE INDEX IF NOT EXISTS idx_posts_created ON posts(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_posts_user_created ON posts(user_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_post_likes_post ON post_likes(post_id);
+    CREATE INDEX IF NOT EXISTS idx_post_comments_post ON post_comments(post_id, created_at DESC);
   `)
 
   try { db.exec("ALTER TABLE listings ADD COLUMN phone TEXT") } catch {}

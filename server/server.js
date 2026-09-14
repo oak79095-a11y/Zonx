@@ -16,6 +16,7 @@ import catalogRoutes from './routes/catalog.js'
 import userRoutes from './routes/users.js'
 import messageRoutes from './routes/messages.js'
 import notificationRoutes from './routes/notifications.js'
+import postRoutes from './routes/posts.js'
 import { initWs } from './ws.js'
 import { expireListings, startExpirationJob } from './services/expiration.js'
 import { verifyToken } from './utils/auth.js'
@@ -110,6 +111,7 @@ app.use('/api/catalog', catalogRoutes)
 app.use('/api/users', userRoutes)
 app.use('/api/messages', messageRoutes)
 app.use('/api/notifications', notificationRoutes)
+app.use('/api/posts', postRoutes)
 
 app.get('/health', (_req, res) => {
   try {
