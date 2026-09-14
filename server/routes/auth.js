@@ -12,17 +12,19 @@ function publicUser(u) {
   return { id: u.id, email: u.email, phone: u.phone, name: u.name, role: u.role, avatar: u.avatar || null }
 }
 
+const router = Router()
+const GOOGLE_ONLY_REGISTRATION = false
+const SESSION_TTL_DAYS = Math.max(Number(process.env.SESSION_TTL_DAYS || 30), 1)
+const SESSION_MAX_AGE = SESSION_TTL_DAYS * 24 * 60 * 60 * 1000
+
 function setSession(res, user) {
-  res.cookie('session', signToken({ id: user.id, role: user.role }), {
+  res.cookie('session', signToken({ id: user.id, role: user.role }, `${SESSION_TTL_DAYS}d`), {
     httpOnly: true,
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000,
+    maxAge: SESSION_MAX_AGE,
     secure: process.env.NODE_ENV === 'production',
   })
 }
-
-const router = Router()
-const GOOGLE_ONLY_REGISTRATION = false
 
 router.post('/register', rateLimit({ max: 5 }), (req, res) => {
   if (GOOGLE_ONLY_REGISTRATION) return res.status(403).json({ error: 'إنشاء الحساب متاح عبر Google فقط' })
@@ -45,13 +47,7 @@ router.post('/register', rateLimit({ max: 5 }), (req, res) => {
     'INSERT INTO users(id,email,phone,password,name,role) VALUES(?,?,?,?,?,?)'
   ).run(id, email || null, phone || null, hashPassword(password), name.trim(), 'user')
 
-  const token = signToken({ id, role: 'user' })
-  res.cookie('session', token, {
-    httpOnly: true,
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-    secure: process.env.NODE_ENV === 'production',
-  })
+   setSession(res, { id, role: 'user' })
   res.json(publicUser(db.prepare('SELECT * FROM users WHERE id = ?').get(id)))
 })
 
@@ -69,13 +65,7 @@ router.post('/login', rateLimit({ max: 5 }), (req, res) => {
     return res.status(401).json({ error: 'البيانات غير صحيحة' })
   }
 
-  const token = signToken({ id: user.id, role: user.role })
-  res.cookie('session', token, {
-    httpOnly: true,
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-    secure: process.env.NODE_ENV === 'production',
-  })
+  setSession(res, user)
   res.json(publicUser(user))
 })
 

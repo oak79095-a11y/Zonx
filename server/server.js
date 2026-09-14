@@ -120,6 +120,7 @@ app.get('/health', (_req, res) => {
         SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active
       FROM listings
     `).get()
+    const users = db.prepare('SELECT COUNT(*) AS total FROM users').get()
     res.json({
       ok: true,
       service: 'limon-bazaar',
@@ -129,6 +130,7 @@ app.get('/health', (_req, res) => {
         total: Number(totals?.total || 0),
         active: Number(totals?.active || 0),
       },
+      users: Number(users?.total || 0),
       retention: {
         listings: Number(process.env.LISTING_EXPIRATION_DAYS ?? 0) > 0 ? '期限ية' : 'دائمة',
         stories: Number(process.env.STORY_RETENTION_DAYS ?? 0) > 0 ? '期限ية' : 'دائمة',
