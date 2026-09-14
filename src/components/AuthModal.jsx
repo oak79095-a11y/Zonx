@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import useOverlay from '../hooks/useOverlay.js'
 
 export default function AuthModal({ open, onClose, onSuccess }) {
-  const [mode] = useState('login')
+  const [mode, setMode] = useState('login')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
@@ -149,7 +149,12 @@ export default function AuthModal({ open, onClose, onSuccess }) {
               </button>
             )}
           </>
-          <p className="auth-switch">إنشاء الحسابات الجديدة يتم عبر Google فقط</p>
+          <p className="auth-switch">
+            {mode === 'login' ? 'ليس لديك حساب؟ ' : 'لديك حساب بالفعل؟ '}
+            <button type="button" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError('') }}>
+              {mode === 'login' ? 'إنشاء حساب' : 'تسجيل الدخول'}
+            </button>
+          </p>
         </form>
       </div>
     </div>

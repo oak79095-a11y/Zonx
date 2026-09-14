@@ -22,7 +22,7 @@ function setSession(res, user) {
 }
 
 const router = Router()
-const GOOGLE_ONLY_REGISTRATION = true
+const GOOGLE_ONLY_REGISTRATION = false
 
 router.post('/register', rateLimit({ max: 5 }), (req, res) => {
   if (GOOGLE_ONLY_REGISTRATION) return res.status(403).json({ error: 'إنشاء الحساب متاح عبر Google فقط' })
