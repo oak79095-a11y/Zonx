@@ -14,7 +14,7 @@ function publicUser(u) {
 
 const router = Router()
 const GOOGLE_ONLY_REGISTRATION = false
-const SESSION_TTL_DAYS = Math.max(Number(process.env.SESSION_TTL_DAYS || 30), 1)
+const SESSION_TTL_DAYS = Math.max(Number(process.env.SESSION_TTL_DAYS || 365), 1)
 const SESSION_MAX_AGE = SESSION_TTL_DAYS * 24 * 60 * 60 * 1000
 
 function setSession(res, user) {
@@ -110,6 +110,8 @@ router.get('/me', authenticate, (req, res) => {
     'SELECT * FROM users WHERE id = ?'
   ).get(req.user.id)
   if (!user) return res.status(404).json({ error: 'غير موجود' })
+  // Sliding session: active users stay signed in without storing a token in the browser.
+  setSession(res, user)
   res.json(publicUser(user))
 })
 

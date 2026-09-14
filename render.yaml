@@ -17,7 +17,7 @@ services:
       - key: STORY_RETENTION_DAYS
         value: "0"
       - key: SESSION_TTL_DAYS
-        value: "30"
+        value: "365"
       - key: FRONTEND_URL
         value: https://oak79095-a11y.github.io
       - key: JWT_SECRET
