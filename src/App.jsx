@@ -19,7 +19,7 @@ import Toasts, { toast } from './components/Toast.jsx'
 import { ArrowBackIcon } from './components/icons.jsx'
 import { ads as initialAds } from './data/ads.js'
 import { categories, categoryIcon } from './data/catalog.js'
-import { mediaUrl } from './config.js'
+import { apiFetch, mediaUrl } from './config.js'
 import { useGlobalWs } from './hooks/useGlobalWs.js'
 
 const PAGE_SIZE = 24
@@ -110,7 +110,7 @@ function AppContent() {
     if (city !== 'all') params.set('city', city)
     if (searchDebounced) params.set('q', searchDebounced)
     setBrowseLoading(true)
-    fetch(`/api/listings?${params.toString()}`)
+    apiFetch(`/api/listings?${params.toString()}`)
       .then(r => r.ok ? r.json() : [])
       .then(rows => {
         const list = Array.isArray(rows) ? rows.map(mapApiAd) : []
@@ -131,7 +131,7 @@ function AppContent() {
     if (city !== 'all') params.set('city', city)
     if (searchDebounced) params.set('q', searchDebounced)
     setBrowseLoading(true)
-    fetch(`/api/listings?${params.toString()}`)
+    apiFetch(`/api/listings?${params.toString()}`)
       .then(r => r.ok ? r.json() : [])
       .then(rows => {
         const list = Array.isArray(rows) ? rows.map(mapApiAd) : []
@@ -154,7 +154,7 @@ function AppContent() {
       let ids = []
       try { ids = JSON.parse(localStorage.getItem(likedStorageKey) || '[]') } catch {}
       if (!ids.length) { setFavAds([]); return }
-      fetch(`/api/listings?ids=${ids.slice(0, 60).join(',')}`)
+       apiFetch(`/api/listings?ids=${ids.slice(0, 60).join(',')}`)
         .then(r => r.ok ? r.json() : [])
         .then(rows => { if (alive) setFavAds(Array.isArray(rows) ? rows.map(mapApiAd) : []) })
         .catch(() => { if (alive) setFavAds([]) })
@@ -173,19 +173,19 @@ function AppContent() {
 
   useEffect(() => {
     if (isAdminPath) {
-      fetch('/api/auth/me', { credentials: 'include' }).then(r=>r.json()).then(u=>{
+       apiFetch('/api/auth/me', { credentials: 'include' }).then(r=>r.json()).then(u=>{
         if (u.role === 'admin') { setAdminUser(u); setView('admin') }
         else setView('admin-login')
       }).catch(()=>setView('admin-login'))
     } else {
-      fetch('/api/auth/me', { credentials: 'include' }).then(r => r.ok ? r.json() : null).then(u => {
+       apiFetch('/api/auth/me', { credentials: 'include' }).then(r => r.ok ? r.json() : null).then(u => {
         if (u && u.id) setUser(u)
       }).catch(() => {})
     }
   }, [])
 
   useEffect(() => {
-    fetch('/api/listings')
+     apiFetch('/api/listings')
       .then(r => {
         if (!r.ok) throw new Error('offline')
         return r.json()
@@ -276,7 +276,7 @@ function AppContent() {
     if (!user) { setUnreadNotifications(0); return }
     let alive = true
     const loadUnread = () => {
-      fetch('/api/notifications', { credentials: 'include' })
+       apiFetch('/api/notifications', { credentials: 'include' })
         .then((r) => r.ok ? r.json() : null)
         .then((data) => { if (alive) setUnreadNotifications(Number(data?.unread) || 0) })
         .catch(() => {})
@@ -304,8 +304,9 @@ function AppContent() {
   }
 
   const handleCreateAd = () => {
-    fetch('/api/listings').then(r => r.json()).then(rows => {
+    apiFetch('/api/listings').then(r => r.ok ? r.json() : []).then(rows => {
       if (Array.isArray(rows)) setAds(rows.map(mapApiAd))
+      setBrowseRefresh((value) => value + 1)
     }).catch(() => {})
     setActiveCategory(null)
     setView('browse')
@@ -323,9 +324,16 @@ function AppContent() {
   }
 
   const handleAuthSuccess = (nextUser) => {
+    // Keep the user's saved likes across sessions; merge any guest likes into the account.
     try {
+      if (nextUser?.id) {
+        const userKey = `bazaar-liked-ads:${nextUser.id}`
+        const guestIds = JSON.parse(localStorage.getItem('bazaar-liked-ads:guest') || '[]')
+        const userIds = JSON.parse(localStorage.getItem(userKey) || '[]')
+        const merged = [...new Set([...userIds, ...guestIds])]
+        localStorage.setItem(userKey, JSON.stringify(merged))
+      }
       localStorage.removeItem('bazaar-liked-ads:guest')
-      if (nextUser?.id) localStorage.removeItem(`bazaar-liked-ads:${nextUser.id}`)
     } catch {}
     setUser(nextUser)
     setLikedCount(0)
@@ -341,10 +349,8 @@ function AppContent() {
   }
 
   const handleLogout = () => {
-    fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {})
-    try {
-      if (user?.id) localStorage.removeItem(`bazaar-liked-ads:${user.id}`)
-    } catch {}
+    apiFetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {})
+    // Per-user likes stay in localStorage so they are restored on the next login.
     setUser(null)
     setLikedCount(0)
     setUnreadNotifications(0)

@@ -64,12 +64,12 @@ export function initDb() {
 
     CREATE TABLE IF NOT EXISTS listings (
       id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      title TEXT NOT NULL,
+       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+       title TEXT NOT NULL,
       description TEXT NOT NULL,
       price INTEGER NOT NULL,
-      category_id TEXT NOT NULL,
-      city_id TEXT NOT NULL,
+       category_id TEXT NOT NULL REFERENCES categories(id),
+       city_id TEXT NOT NULL REFERENCES cities(id),
       status TEXT NOT NULL DEFAULT 'pending',
       featured INTEGER NOT NULL DEFAULT 0,
       featured_until TEXT,
@@ -81,7 +81,7 @@ export function initDb() {
 
     CREATE TABLE IF NOT EXISTS listing_images (
       id TEXT PRIMARY KEY,
-      listing_id TEXT NOT NULL,
+      listing_id TEXT NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
       path TEXT NOT NULL,
       sort_order INTEGER DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -117,8 +117,8 @@ export function initDb() {
 
     CREATE TABLE IF NOT EXISTS listing_comments (
       id TEXT PRIMARY KEY,
-      listing_id TEXT NOT NULL,
-      user_id TEXT,
+      listing_id TEXT NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
+      user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
       name TEXT NOT NULL DEFAULT 'زائر',
       text TEXT NOT NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -225,7 +225,7 @@ export function initDb() {
 
     CREATE TABLE IF NOT EXISTS listing_likes (
       id TEXT PRIMARY KEY,
-      listing_id TEXT NOT NULL,
+      listing_id TEXT NOT NULL REFERENCES listings(id) ON DELETE CASCADE,
       actor_key TEXT NOT NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       UNIQUE(listing_id, actor_key)

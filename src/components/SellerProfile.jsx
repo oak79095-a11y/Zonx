@@ -15,7 +15,7 @@ function ChatIcon({ size = 18 }) {
 }
 import { formatPrice, formatDate } from '../data/format.js'
 import { cityName, categoryIcon } from '../data/catalog.js'
-import { mediaUrl } from '../config.js'
+import { apiFetch, mediaUrl } from '../config.js'
 
 const VIDEO_EXT = /\.(mp4|webm|mov|m4v)$/i
 
@@ -57,12 +57,12 @@ export default function SellerProfile({ seller, user, onBack, onOpenAd, onSeller
     setAds(null)
     setInfo(null)
     setOffline(false)
-    fetch(`/api/listings?user_id=${encodeURIComponent(seller.id || '')}&limit=40`)
+    apiFetch(`/api/listings?user_id=${encodeURIComponent(seller.id || '')}&limit=40`)
       .then((r) => { if (!r.ok) throw new Error('offline'); return r.json() })
       .then((rows) => { if (alive) setAds(Array.isArray(rows) ? rows.map(mapApiAd) : []) })
       .catch(() => { if (alive) { setOffline(true); setAds([]) } })
     if (seller.id) {
-      fetch(`/api/users/${seller.id}`, { credentials: 'include' })
+      apiFetch(`/api/users/${seller.id}`, { credentials: 'include' })
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => { if (alive && d) setInfo(d) })
         .catch(() => {})
@@ -104,7 +104,7 @@ export default function SellerProfile({ seller, user, onBack, onOpenAd, onSeller
     const next = !isFollowing
     setInfo((d) => ({ ...d, is_following: next, followers: d.followers + (next ? 1 : -1) }))
     try {
-      const r = await fetch(`/api/users/${seller.id}/follow`, {
+      const r = await apiFetch(`/api/users/${seller.id}/follow`, {
         method: 'POST',
         credentials: 'include',
       })

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { apiFetch } from '../config.js'
 
 export default function AdminLogin({ onSuccess }) {
   const [name, setName] = useState('')
@@ -11,7 +12,7 @@ export default function AdminLogin({ onSuccess }) {
     setError('')
     setLoading(true)
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await apiFetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

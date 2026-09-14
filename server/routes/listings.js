@@ -148,7 +148,7 @@ router.get('/:id/comments', (req, res) => {
 
 router.post('/:id/comments', optionalAuth, rateLimit({ windowMs: 60 * 1000, max: 10 }), (req, res) => {
   const db = getDb()
-  const listing = db.prepare('SELECT id FROM listings WHERE id = ?').get(req.params.id)
+  const listing = db.prepare('SELECT id, status FROM listings WHERE id = ?').get(req.params.id)
   if (!listing) return res.status(404).json({ error: 'غير موجود' })
   if (listing.status !== 'active') return res.status(404).json({ error: 'غير موجود' })
   const text = String(req.body?.text || '').trim()
@@ -225,8 +225,8 @@ router.put('/:id', authenticate, (req, res) => {
   const db = getDb()
   const listing = db.prepare('SELECT * FROM listings WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id)
   if (!listing) return res.status(404).json({ error: 'غير موجود' })
-  if (listing.status === 'active' || listing.status === 'expired') {
-    return res.status(400).json({ error: 'لا يمكن تعديل اعلان نشط او منتهي' })
+  if (listing.status === 'expired') {
+    return res.status(400).json({ error: 'لا يمكن تعديل اعلان منتهي' })
   }
   const err = validateListing(req.body)
   if (err) return res.status(400).json({ error: err })

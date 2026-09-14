@@ -1,6 +1,7 @@
 ﻿import { useState } from 'react'
 import { categories, cities } from '../data/catalog.js'
 import useOverlay from '../hooks/useOverlay.js'
+import { apiFetch } from '../config.js'
 
 const MAX_FILES = 8
 const VIDEO_RE = /\.(mp4|webm|mov|m4v)$/i
@@ -81,7 +82,7 @@ export default function PostAdModal({ open, onClose, onCreate }) {
     setLoading(true)
     try {
       // 1) انشاء الاعلان
-      const r = await fetch('/api/listings', {
+      const r = await apiFetch('/api/listings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -106,13 +107,13 @@ export default function PostAdModal({ open, onClose, onCreate }) {
         setUploading(true)
         const fd = new FormData()
         media.forEach(m => fd.append('images', m.file))
-        const ur = await fetch(`/api/listings/${created.id}/images`, {
+        const ur = await apiFetch(`/api/listings/${created.id}/images`, {
           method: 'POST',
           credentials: 'include',
           body: fd,
         })
         if (!ur.ok) {
-          await fetch(`/api/listings/${created.id}`, { method: 'DELETE', credentials: 'include' }).catch(() => {})
+          await apiFetch(`/api/listings/${created.id}`, { method: 'DELETE', credentials: 'include' }).catch(() => {})
           setError('تعذر رفع الوسائط، لم يتم نشر الاعلان')
           return
         }

@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { categoryName, cityName, categoryIcon } from '../data/catalog.js'
 import { formatPrice, formatDate } from '../data/format.js'
-import { HeartIcon, CommentIcon, ShareIcon, BookmarkIcon, MoreIcon, LocationIcon, SendIcon, VerifiedIcon, ZonxMark } from './icons.jsx'
+import { HeartIcon, CommentIcon, ShareIcon, BookmarkIcon, MoreIcon, LocationIcon, SendIcon, VerifiedIcon, ZonxMark, GridIcon, ImageFileIcon, UserPlusIcon } from './icons.jsx'
+import { apiFetch } from '../config.js'
 
 const scopedKey = (key, userId) => `${key}:${userId || 'guest'}`
 
@@ -31,6 +32,7 @@ export default function AdCard({ ad, onClick, onAvatar, userId = null }) {
   const [likesCount, setLikesCount] = useState(Number(ad.likes) || 0)
   const [saved, setSaved] = useState(() => loadSet(savedKey).has(ad.id))
   const [menuOpen, setMenuOpen] = useState(false)
+  const [profileOptionsOpen, setProfileOptionsOpen] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [showComments, setShowComments] = useState(false)
   const [comments, setComments] = useState([])
@@ -73,7 +75,7 @@ export default function AdCard({ ad, onClick, onAvatar, userId = null }) {
       void popRef.current.offsetWidth
       popRef.current.classList.add('pop')
     }
-    fetch(`/api/listings/${ad.id}/like`, {
+    apiFetch(`/api/listings/${ad.id}/like`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ liked: next })
@@ -112,7 +114,7 @@ export default function AdCard({ ad, onClick, onAvatar, userId = null }) {
   const openComments = () => {
     setShowComments(v => !v)
     if (!commentsLoaded) {
-      fetch(`/api/listings/${ad.id}/comments`).then(r => r.json()).then(rows => {
+      apiFetch(`/api/listings/${ad.id}/comments`).then(r => r.json()).then(rows => {
         setComments(Array.isArray(rows) ? rows : [])
         setCommentsLoaded(true)
       }).catch(() => setCommentsLoaded(true))
@@ -125,7 +127,7 @@ export default function AdCard({ ad, onClick, onAvatar, userId = null }) {
     if (!text || postingComment) return
     setPostingComment(true)
     try {
-      const r = await fetch(`/api/listings/${ad.id}/comments`, {
+      const r = await apiFetch(`/api/listings/${ad.id}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text, name: 'زائر' })
@@ -186,16 +188,80 @@ export default function AdCard({ ad, onClick, onAvatar, userId = null }) {
   const shownComments = showAllComments ? comments.slice(0, 10) : comments.slice(0, 2)
   const longDesc = ad.description && ad.description.length > 90
 
+<<<<<<< HEAD
   // الضغط على صورة البائع: افتح ستورياته - ان لم توجد افتح صفحة بروفايله
   const avatarClick = (e) => {
     e.stopPropagation()
     e.preventDefault()
     onAvatar?.(ad)
+=======
+  // فتح ستوري البائع، مع العودة إلى ملفه إذا لم تكن لديه ستوريات.
+  const openStoryOrProfile = () => {
+    if (!onAvatar) return
+    const reqId = Math.random().toString(36).slice(2)
+    let settled = false
+    const onResponse = (ev) => {
+      if (ev.detail?.reqId !== reqId || settled) return
+      settled = true
+      clearTimeout(timer)
+      window.removeEventListener('seller-story-response', onResponse)
+      if (!ev.detail.handled) onAvatar(ad)
+    }
+    const timer = setTimeout(() => {
+      if (settled) return
+      settled = true
+      window.removeEventListener('seller-story-response', onResponse)
+      onAvatar(ad)
+    }, 700)
+    window.addEventListener('seller-story-response', onResponse)
+    window.dispatchEvent(new CustomEvent('seller-story-request', { detail: { reqId, sellerId: ad.seller_id || null, sellerName: ad.seller_name || '' } }))
+>>>>>>> 7c885b4 (Fix API persistence and listing relationships)
+  }
+
+  const avatarClick = (e) => {
+    e.stopPropagation()
+    e.preventDefault()
+    setProfileOptionsOpen(true)
+  }
+
+  const chooseProfileOption = (action) => {
+    setProfileOptionsOpen(false)
+    action()
   }
 
   return (
     <article ref={cardRef} className="post-card fade-in">
       {menuOpen && <div style={{position:'fixed', inset:0, zIndex:59}} onClick={() => setMenuOpen(false)} />}
+      {profileOptionsOpen && (
+        <div className="profile-options-overlay" onClick={() => setProfileOptionsOpen(false)}>
+          <div className="profile-options" role="dialog" aria-modal="true" aria-labelledby={`profile-options-title-${ad.id}`} onClick={(e) => e.stopPropagation()}>
+            <div className="profile-options-head">
+              <div>
+                <span className="profile-options-kicker">عرض المحتوى</span>
+                <h2 id={`profile-options-title-${ad.id}`}>{seller}</h2>
+              </div>
+              <button type="button" className="profile-options-close" onClick={() => setProfileOptionsOpen(false)} aria-label="إغلاق">×</button>
+            </div>
+            <div className="profile-options-list">
+              <button type="button" onClick={() => chooseProfileOption(() => onAvatar?.(ad))}>
+                <span className="profile-option-icon"><UserPlusIcon size={21} /></span>
+                <span><b>عرض الملف الشخصي</b><small>معلومات البائع ومتابعوه</small></span>
+                <span className="profile-option-arrow">‹</span>
+              </button>
+              <button type="button" onClick={() => chooseProfileOption(() => onClick(ad))}>
+                <span className="profile-option-icon"><ImageFileIcon size={21} /></span>
+                <span><b>عرض المنشور</b><small>تفاصيل هذا الإعلان وصوره</small></span>
+                <span className="profile-option-arrow">‹</span>
+              </button>
+              <button type="button" onClick={() => chooseProfileOption(openStoryOrProfile)}>
+                <span className="profile-option-icon"><GridIcon size={21} /></span>
+                <span><b>عرض الستوري</b><small>مشاهدة آخر ستوريات البائع</small></span>
+                <span className="profile-option-arrow">‹</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <header className="post-head">
         <div className="post-user" onClick={() => onClick(ad)} role="button" tabIndex={0}>
           {sellerAvatar ? (
@@ -207,7 +273,11 @@ export default function AdCard({ ad, onClick, onAvatar, userId = null }) {
               title="عرض الستوري او البروفايل"
             />
           ) : (
+<<<<<<< HEAD
             <span className="post-avatar" onClick={avatarClick} role="img" aria-label={`عرض ملف ${seller}`}>{icon}</span>
+=======
+            <span className="post-avatar" onClick={avatarClick} role="button" tabIndex={0} title="خيارات البائع">{icon}</span>
+>>>>>>> 7c885b4 (Fix API persistence and listing relationships)
           )}
           <div className="post-user-meta">
             <span className="post-seller">

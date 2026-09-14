@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import useOverlay from '../hooks/useOverlay.js'
+import { apiFetch } from '../config.js'
 
 export default function AuthModal({ open, onClose, onSuccess }) {
   const [mode, setMode] = useState('login')
@@ -80,7 +81,7 @@ export default function AuthModal({ open, onClose, onSuccess }) {
       const body = mode === 'register'
         ? { name: name.trim(), email: email.trim() || undefined, phone: phone.trim() || undefined, password }
         : { email: email.trim() || undefined, phone: phone.trim() || undefined, password }
-      const r = await fetch(`/api/auth/${mode === 'register' ? 'register' : 'login'}`, {
+      const r = await apiFetch(`/api/auth/${mode === 'register' ? 'register' : 'login'}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -93,7 +94,7 @@ export default function AuthModal({ open, onClose, onSuccess }) {
         try {
           const fd = new FormData()
           fd.append('file', avatar)
-          const ur = await fetch('/api/auth/avatar', { method: 'POST', credentials: 'include', body: fd })
+          const ur = await apiFetch('/api/auth/avatar', { method: 'POST', credentials: 'include', body: fd })
           if (ur.ok) {
             const uj = await ur.json()
             user = { ...user, avatar: uj.avatar }

@@ -6,6 +6,10 @@ export function apiUrl(path) {
   return `${API_ORIGIN}${path}`
 }
 
+export function apiFetch(path, options) {
+  return fetch(apiUrl(path), options)
+}
+
 export function mediaUrl(value) {
   if (!value || /^https?:\/\//i.test(value) || value.startsWith('blob:') || value.startsWith('data:')) return value
   return value.startsWith('/') ? `${API_ORIGIN}${value}` : value
