@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowBackIcon } from './icons.jsx'
-import { mediaUrl } from '../config.js'
+import { apiFetch, mediaUrl } from '../config.js'
 
 function timeOf(value) {
   try {
@@ -13,23 +13,31 @@ function timeOf(value) {
 export default function NotificationCenter({ onBack }) {
   const [items, setItems] = useState(null)
   const [requests, setRequests] = useState([])
+  const syncingRef = useRef(false)
 
   useEffect(() => {
     let alive = true
-    Promise.all([
-      fetch('/api/notifications', { credentials: 'include' }).then((r) => r.ok ? r.json() : null),
-      fetch('/api/users/friend-requests', { credentials: 'include' }).then((r) => r.ok ? r.json() : []),
-      fetch('/api/notifications/read', { method: 'POST', credentials: 'include' }),
-    ]).then(([data, incoming]) => {
-      if (alive) setItems(Array.isArray(data?.notifications) ? data.notifications : [])
-      if (alive) setRequests(Array.isArray(incoming) ? incoming : [])
-      window.dispatchEvent(new Event('notifications-read'))
-    }).catch(() => { if (alive) setItems([]) })
-    return () => { alive = false }
+    const load = (markRead = false) => {
+      if (!alive || document.visibilityState !== 'visible' || syncingRef.current) return
+      syncingRef.current = true
+      const requests = [
+        apiFetch('/api/notifications', { credentials: 'include' }).then((r) => r.ok ? r.json() : null),
+        apiFetch('/api/users/friend-requests', { credentials: 'include' }).then((r) => r.ok ? r.json() : []),
+      ]
+      if (markRead) requests.push(apiFetch('/api/notifications/read', { method: 'POST', credentials: 'include' }))
+      Promise.all(requests).then(([data, incoming]) => {
+        if (alive) setItems(Array.isArray(data?.notifications) ? data.notifications : [])
+        if (alive) setRequests(Array.isArray(incoming) ? incoming : [])
+        if (markRead) window.dispatchEvent(new Event('notifications-read'))
+      }).catch(() => { if (alive) setItems([]) }).finally(() => { syncingRef.current = false })
+    }
+    load(true)
+    const timer = setInterval(() => load(false), 1000)
+    return () => { alive = false; clearInterval(timer) }
   }, [])
 
   const respond = async (id, action) => {
-    const r = await fetch(`/api/users/friend-requests/${encodeURIComponent(id)}/respond`, {
+    const r = await apiFetch(`/api/users/friend-requests/${encodeURIComponent(id)}/respond`, {
       method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }),
     })
     if (r.ok) setRequests((prev) => prev.filter((request) => request.id !== id))

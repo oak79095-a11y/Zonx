@@ -86,6 +86,7 @@ function AppContent() {
   const [browseLoading, setBrowseLoading] = useState(false)
   const [browseRefresh, setBrowseRefresh] = useState(0)
   const browseOffsetRef = useRef(0)
+  const listingsSyncRef = useRef(false)
   const [searchDebounced, setSearchDebounced] = useState('')
 
   // Favorites (server-side fetch by ids)
@@ -186,7 +187,10 @@ function AppContent() {
 
   useEffect(() => {
     let firstLoad = true
-    const refreshListings = () => apiFetch('/api/listings?limit=60')
+    const refreshListings = () => {
+      if (document.visibilityState !== 'visible' || listingsSyncRef.current) return
+      listingsSyncRef.current = true
+      apiFetch('/api/listings?limit=60')
       .then(r => {
         if (!r.ok) throw new Error('offline')
         return r.json()
@@ -197,17 +201,19 @@ function AppContent() {
       })
       .catch(() => setServerOffline(true))
       .finally(() => {
+        listingsSyncRef.current = false
         if (firstLoad) {
           firstLoad = false
           setLoading(false)
         }
       })
+    }
 
     refreshListings()
     const timer = setInterval(() => {
       refreshListings()
       if (view === 'browse') setBrowseRefresh((value) => value + 1)
-    }, 5000)
+    }, 1000)
     return () => clearInterval(timer)
   }, [view])
 
@@ -295,7 +301,7 @@ function AppContent() {
         .catch(() => {})
     }
     loadUnread()
-    const timer = setInterval(loadUnread, 60000)
+    const timer = setInterval(loadUnread, 1000)
     const clear = () => setUnreadNotifications(0)
     window.addEventListener('notifications-read', clear)
     return () => { alive = false; clearInterval(timer); window.removeEventListener('notifications-read', clear) }

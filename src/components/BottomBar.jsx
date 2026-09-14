@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { cities } from '../data/catalog.js'
-import { mediaUrl } from '../config.js'
+import { apiFetch, mediaUrl } from '../config.js'
 import EditProfileModal from './EditProfileModal.jsx'
 
 function HomeIcon() {
@@ -83,21 +83,25 @@ export default function BottomBar({ city, onCityChange, onHome, onPostAd, user, 
   const [unread, setUnread] = useState(0)
   const menuRef = useRef(null)
   const cityRef = useRef(null)
+  const unreadSyncingRef = useRef(false)
 
   useEffect(() => {
     if (!user) { setUnread(0); return }
     let alive = true
     const poll = () => {
-      fetch('/api/messages/unread', { credentials: 'include' })
+      if (document.visibilityState !== 'visible' || unreadSyncingRef.current) return
+      unreadSyncingRef.current = true
+      apiFetch('/api/messages/unread', { credentials: 'include' })
         .then((r) => (r.ok ? r.json() : null))
         .then((d) => { if (alive && d) setUnread(d.unread || 0) })
         .catch(() => {})
+        .finally(() => { unreadSyncingRef.current = false })
     }
-    // Initial fetch + WS updates + slow fallback poll
+    // Initial fetch + WS updates + one-second fallback poll.
     poll()
     const onMsg = () => poll()
     window.addEventListener('ws-message', onMsg)
-    const timer = setInterval(poll, 60000)
+    const timer = setInterval(poll, 1000)
     return () => { alive = false; clearInterval(timer); window.removeEventListener('ws-message', onMsg) }
   }, [user])
 

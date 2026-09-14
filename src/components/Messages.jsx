@@ -137,16 +137,19 @@ export default function Messages({ user, initialPeer, onBack, onRequireAuth }) {
   const pendingIce = useRef([])
   const callRef = useRef(null)
   const syncingRef = useRef(false)
+  const convsSyncingRef = useRef(false)
 
   activeRef.current = active
   callRef.current = call
 
   const loadConvs = useCallback(() => {
-    if (!user) return
+    if (!user || document.visibilityState !== 'visible' || convsSyncingRef.current) return
+    convsSyncingRef.current = true
     apiFetch('/api/messages/conversations', { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : []))
       .then((rows) => { setConvs(Array.isArray(rows) ? rows : []); setLoaded(true) })
       .catch(() => setLoaded(true))
+      .finally(() => { convsSyncingRef.current = false })
   }, [user])
 
   const syncActiveChat = useCallback(async () => {
@@ -490,7 +493,7 @@ export default function Messages({ user, initialPeer, onBack, onRequireAuth }) {
     const timer = setInterval(() => {
       loadConvs()
       syncActiveChat()
-    }, 5000)
+    }, 1000)
     return () => clearInterval(timer)
   }, [user, loadConvs, syncActiveChat])
 

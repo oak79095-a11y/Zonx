@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { toast } from './Toast.jsx'
 import { VerifiedIcon, ZonxMark } from './icons.jsx'
-import { mediaUrl } from '../config.js'
+import { apiFetch, mediaUrl } from '../config.js'
 
 const VIDEO_EXT = /\.(mp4|webm|mov|m4v)$/i
 
@@ -14,15 +14,24 @@ export default function StoriesBar({ user }) {
   const fileRef = useRef(null)
   const videoRef = useRef(null)
   const timerRef = useRef(null)
+  const syncRef = useRef(false)
 
   const load = useCallback(() => {
-    fetch('/api/stories', { credentials: 'include' })
+    if (document.visibilityState !== 'visible' || syncRef.current) return
+    syncRef.current = true
+    apiFetch('/api/stories', { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : []))
       .then((rows) => setStories(Array.isArray(rows) ? rows.map((story) => ({ ...story, media: mediaUrl(story.media), user_avatar: mediaUrl(story.user_avatar) })) : []))
       .catch(() => {})
+      .finally(() => { syncRef.current = false })
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    if (!user) return undefined
+    load()
+    const timer = setInterval(load, 1000)
+    return () => clearInterval(timer)
+  }, [load, user])
 
   // تجميع ستوريات كل مستخدم في بوكس واحد (الأحدث أولاً)
   const groups = useMemo(() => {
@@ -86,7 +95,7 @@ export default function StoriesBar({ user }) {
     if (viewerIndex === null) return
     const s = ordered[viewerIndex]
     if (!s) return
-    fetch(`/api/stories/${s.id}/view`, { method: 'POST', credentials: 'include' }).catch(() => {})
+    apiFetch(`/api/stories/${s.id}/view`, { method: 'POST', credentials: 'include' }).catch(() => {})
     if (s.media_type === 'video') return // الفيديو يتقدم عند الانتهاء
     timerRef.current = setTimeout(goNext, 5000)
     return () => clearTimeout(timerRef.current)
@@ -128,7 +137,7 @@ export default function StoriesBar({ user }) {
         }
         const fd = new FormData()
         fd.append('story', f)
-        const r = await fetch('/api/stories', { method: 'POST', body: fd, credentials: 'include' })
+        const r = await apiFetch('/api/stories', { method: 'POST', body: fd, credentials: 'include' })
         if (!r.ok) skipped++
       }
       if (skipped) setError(`تم تجاهل ${skipped} ملف (نوع غير مدعوم او حجم كبير - الحد 15MB والفيديو 30 ثانية)`)
@@ -141,7 +150,7 @@ export default function StoriesBar({ user }) {
 
   const deleteStory = async (id) => {
     try {
-      await fetch(`/api/stories/${id}`, { method: 'DELETE', credentials: 'include' })
+      await apiFetch(`/api/stories/${id}`, { method: 'DELETE', credentials: 'include' })
       setMenuUserId(null)
       setViewerIndex(null)
       toast('تم حذف الستوري', 'info')
