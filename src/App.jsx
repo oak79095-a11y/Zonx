@@ -185,7 +185,8 @@ function AppContent() {
   }, [])
 
   useEffect(() => {
-     apiFetch('/api/listings')
+    let firstLoad = true
+    const refreshListings = () => apiFetch('/api/listings?limit=60')
       .then(r => {
         if (!r.ok) throw new Error('offline')
         return r.json()
@@ -195,8 +196,20 @@ function AppContent() {
         setServerOffline(false)
       })
       .catch(() => setServerOffline(true))
-      .finally(() => setLoading(false))
-  }, [])
+      .finally(() => {
+        if (firstLoad) {
+          firstLoad = false
+          setLoading(false)
+        }
+      })
+
+    refreshListings()
+    const timer = setInterval(() => {
+      refreshListings()
+      if (view === 'browse') setBrowseRefresh((value) => value + 1)
+    }, 5000)
+    return () => clearInterval(timer)
+  }, [view])
 
   const featuredAds = useMemo(() => ads.filter((a) => a.featured), [ads])
   const latestAds = useMemo(() => ads.slice(0, 8), [ads])

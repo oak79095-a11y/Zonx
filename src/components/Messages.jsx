@@ -1,6 +1,6 @@
 ﻿import { useEffect, useState, useRef, useCallback } from 'react'
 import { toast } from './Toast.jsx'
-import { API_ORIGIN, mediaUrl } from '../config.js'
+import { API_ORIGIN, ICE_SERVERS, apiFetch, mediaUrl } from '../config.js'
 import {
   ArrowBackIcon, VerifiedIcon, SendIcon, PaperclipIcon, MicIcon,
   PhoneIcon, VideoCamIcon, FileIcon, XIcon, ImageFileIcon, PhoneOffIcon,
@@ -131,21 +131,44 @@ export default function Messages({ user, initialPeer, onBack, onRequireAuth }) {
   const pcRef = useRef(null)
   const localStreamRef = useRef(null)
   const remoteVideoRef = useRef(null)
+  const remoteAudioRef = useRef(null)
   const localVideoRef = useRef(null)
   const pendingOffer = useRef(null)
   const pendingIce = useRef([])
   const callRef = useRef(null)
+  const syncingRef = useRef(false)
 
   activeRef.current = active
   callRef.current = call
 
   const loadConvs = useCallback(() => {
     if (!user) return
-    fetch('/api/messages/conversations', { credentials: 'include' })
+    apiFetch('/api/messages/conversations', { credentials: 'include' })
       .then((r) => (r.ok ? r.json() : []))
       .then((rows) => { setConvs(Array.isArray(rows) ? rows : []); setLoaded(true) })
       .catch(() => setLoaded(true))
   }, [user])
+
+  const syncActiveChat = useCallback(async () => {
+    const userId = activeRef.current
+    if (!userId || syncingRef.current) return
+    syncingRef.current = true
+    try {
+      const response = await apiFetch(`/api/messages/with/${userId}`, { credentials: 'include' })
+      if (!response.ok) return
+      const data = await response.json()
+      setChat((current) => {
+        if (!current || current.user.id !== userId || !data?.user) return current
+        const known = new Map((current.messages || []).map((message) => [message.id, message]))
+        for (const message of data.messages || []) known.set(message.id, message)
+        return { ...current, user: data.user, messages: [...known.values()] }
+      })
+    } catch {
+      // The WebSocket remains the primary realtime channel.
+    } finally {
+      syncingRef.current = false
+    }
+  }, [])
 
   const applyUnread = useCallback((userId) => {
     setConvs((list) => list.map((c) => (c.user.id === userId ? { ...c, unread: 0 } : c)))
@@ -165,17 +188,29 @@ export default function Messages({ user, initialPeer, onBack, onRequireAuth }) {
     pendingOffer.current = null
     pendingIce.current = []
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null
+    if (remoteAudioRef.current) remoteAudioRef.current.srcObject = null
     if (localVideoRef.current) localVideoRef.current.srcObject = null
     setCall(null)
   }
 
   const createPc = (peerId) => {
-    const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] })
+    const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS })
     pc.onicecandidate = (e) => {
       if (e.candidate) wsSend({ type: 'call-ice', to: peerId, candidate: e.candidate })
     }
     pc.ontrack = (e) => {
       if (remoteVideoRef.current) remoteVideoRef.current.srcObject = e.streams[0]
+      if (remoteAudioRef.current) {
+        remoteAudioRef.current.srcObject = e.streams[0]
+        remoteAudioRef.current.play().catch(() => {})
+      }
+    }
+    pc.onconnectionstatechange = () => {
+      if (pc.connectionState === 'connected') {
+        setCall((c) => c ? { ...c, status: 'active' } : c)
+      } else if (['failed', 'disconnected'].includes(pc.connectionState)) {
+        toast('تعذر تثبيت اتصال المكالمة', 'error')
+      }
     }
     return pc
   }
@@ -288,7 +323,7 @@ export default function Messages({ user, initialPeer, onBack, onRequireAuth }) {
     try {
       const fd = new FormData()
       fd.append('file', file)
-      const up = await fetch('/api/messages/upload', { method: 'POST', body: fd, credentials: 'include' })
+      const up = await apiFetch('/api/messages/upload', { method: 'POST', body: fd, credentials: 'include' })
       const d = await up.json()
       if (!up.ok) throw new Error(d?.error || 'فشل الرفع')
       const at = new Date().toISOString().slice(0, 19).replace('T', ' ')
@@ -315,7 +350,7 @@ export default function Messages({ user, initialPeer, onBack, onRequireAuth }) {
       }
       if (ws && ws.readyState === 1) ws.send(JSON.stringify(payload))
       else {
-        fetch(`/api/messages/with/${active}`, {
+        apiFetch(`/api/messages/with/${active}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -449,6 +484,16 @@ export default function Messages({ user, initialPeer, onBack, onRequireAuth }) {
 
   useEffect(() => { loadConvs() }, [loadConvs])
 
+  // Fallback synchronization for missed WebSocket events and new conversations.
+  useEffect(() => {
+    if (!user) return undefined
+    const timer = setInterval(() => {
+      loadConvs()
+      syncActiveChat()
+    }, 5000)
+    return () => clearInterval(timer)
+  }, [user, loadConvs, syncActiveChat])
+
   const openChat = async (userId, peer = null) => {
     if (peer) peerRef.current = peer
     setActive(userId)
@@ -457,7 +502,7 @@ export default function Messages({ user, initialPeer, onBack, onRequireAuth }) {
     applyUnread(userId)
     const fallbackUser = peer || peerRef.current || { id: userId, name: 'مستخدم', avatar: null }
     try {
-      const d = await fetch(`/api/messages/with/${userId}`, { credentials: 'include' }).then((r) => r.ok ? r.json() : null)
+      const d = await apiFetch(`/api/messages/with/${userId}`, { credentials: 'include' }).then((r) => r.ok ? r.json() : null)
       if (d && d.user) {
         peerRef.current = d.user
         setChat(d)
@@ -465,7 +510,7 @@ export default function Messages({ user, initialPeer, onBack, onRequireAuth }) {
       } else {
         setChat({ user: fallbackUser, messages: [] })
       }
-      fetch(`/api/messages/with/${userId}/read`, { method: 'POST', credentials: 'include' }).catch(() => {})
+      apiFetch(`/api/messages/with/${userId}/read`, { method: 'POST', credentials: 'include' }).catch(() => {})
     } catch {
       setChat({ user: fallbackUser, messages: [] })
       toast('تعذر الاتصال بالخادم - تحقق من تشغيل السيرفر', 'error')
@@ -501,7 +546,7 @@ export default function Messages({ user, initialPeer, onBack, onRequireAuth }) {
     if (ws && ws.readyState === 1) {
       ws.send(JSON.stringify({ type: 'msg', to: active, text: t, from_name: user.name, from_avatar: user.avatar }))
     } else {
-      fetch(`/api/messages/with/${active}`, {
+      apiFetch(`/api/messages/with/${active}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -521,7 +566,7 @@ export default function Messages({ user, initialPeer, onBack, onRequireAuth }) {
         : m),
     } : c)
     try {
-      const r = await fetch(`/api/messages/${message.id}/reaction`, {
+      const r = await apiFetch(`/api/messages/${message.id}/reaction`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ reaction: 'heart' }),
       })
@@ -551,7 +596,7 @@ export default function Messages({ user, initialPeer, onBack, onRequireAuth }) {
 
   const deleteMessage = async (message) => {
     if (message.from !== 'me') return
-    const r = await fetch(`/api/messages/${message.id}`, { method: 'DELETE', credentials: 'include' }).catch(() => null)
+    const r = await apiFetch(`/api/messages/${message.id}`, { method: 'DELETE', credentials: 'include' }).catch(() => null)
     if (!r?.ok) { toast('تعذر حذف الرسالة', 'error'); return }
     setChat((c) => c ? { ...c, messages: c.messages.filter((m) => m.id !== message.id) } : c)
     setActionMessage(null)
@@ -797,6 +842,9 @@ export default function Messages({ user, initialPeer, onBack, onRequireAuth }) {
                 <video ref={remoteVideoRef} className="call-remote" autoPlay playsInline />
                 <video ref={localVideoRef} className="call-local" autoPlay playsInline muted />
               </>
+            )}
+            {call.kind === 'audio' && !call.incoming && (
+              <audio ref={remoteAudioRef} autoPlay playsInline />
             )}
             <div className="call-actions">
               {call.incoming ? (
