@@ -218,6 +218,11 @@ function AppContent() {
     setSelectedAd(ad)
     setView('detail')
     window.scrollTo({ top: 0, behavior: 'auto' })
+    // Fetch the detail endpoint so the server records a view and returns fresh data.
+    fetch(`/api/listings/${encodeURIComponent(ad.id)}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((fresh) => { if (fresh) setSelectedAd(mapApiAd(fresh)) })
+      .catch(() => {})
   }
 
   const openSellerProfile = (ad) => {

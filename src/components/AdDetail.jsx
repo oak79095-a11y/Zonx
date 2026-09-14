@@ -87,10 +87,12 @@ export default function AdDetail({ ad, onBack }) {
               </div>
               <div className="detail-price">{formatPrice(ad.price)} <span className="sep">ل.س</span></div>
               <p className="detail-desc">{ad.description}</p>
-              <div className="detail-contact">
-                <a className="btn btn-primary" href={`tel:${ad.phone}`}>اتصال: {ad.phone}</a>
-                <button type="button" className="btn btn-green" onClick={() => window.open(`https://wa.me/${ad.phone.replace(/^0/, '963')}`, '_blank')}>واتساب</button>
-              </div>
+              {ad.phone ? (
+                <div className="detail-contact">
+                  <a className="btn btn-primary" href={`tel:${ad.phone}`}>اتصال: {ad.phone}</a>
+                  <button type="button" className="btn btn-green" onClick={() => window.open(`https://wa.me/${ad.phone.replace(/^0/, '963')}`, '_blank', 'noopener,noreferrer')}>واتساب</button>
+                </div>
+              ) : <p className="section-sub">لا يوجد رقم تواصل لهذا الإعلان</p>}
             </div>
           </div>
         </div>

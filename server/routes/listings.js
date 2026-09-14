@@ -240,6 +240,9 @@ router.delete('/:id', authenticate, (req, res) => {
   try {
     for (const img of images) deleteFile(img.path)
     db.prepare('DELETE FROM listing_images WHERE listing_id = ?').run(req.params.id)
+    db.prepare('DELETE FROM listing_likes WHERE listing_id = ?').run(req.params.id)
+    db.prepare('DELETE FROM listing_comments WHERE listing_id = ?').run(req.params.id)
+    db.prepare('DELETE FROM payments WHERE listing_id = ?').run(req.params.id)
     db.prepare('DELETE FROM listings WHERE id = ?').run(req.params.id)
     db.exec('COMMIT')
   } catch (e) {

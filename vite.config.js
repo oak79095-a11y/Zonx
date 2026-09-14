@@ -2,7 +2,8 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  base: '/Zonx/',
+  // Render serves the SPA from the domain root. GitHub Pages sets this explicitly in deploy.
+  base: process.env.VITE_BASE || '/',
   plugins: [react()],
   css: {
     modules: {

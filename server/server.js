@@ -46,6 +46,21 @@ app.use(cors({ origin: FRONTEND_URL, credentials: true }))
 app.use(cookieParser())
 app.use(express.json({ limit: '5mb' }))
 
+// Cookies are intentionally cross-site for the GitHub Pages frontend. Require a
+// matching browser Origin on state-changing requests to prevent CSRF.
+app.use((req, res, next) => {
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next()
+  const origin = req.get('origin')
+  if (!origin) return next()
+  const allowed = new Set([FRONTEND_URL, 'http://localhost:5173', 'http://localhost:5199'])
+  try {
+    if (!allowed.has(new URL(origin).origin)) return res.status(403).json({ error: 'مصدر الطلب غير مسموح' })
+  } catch {
+    return res.status(403).json({ error: 'مصدر الطلب غير صالح' })
+  }
+  next()
+})
+
 // Uploads carry random UUID names and never change in place -> cache them forever.
 const STATIC_OPTS = { maxAge: '365d', immutable: true, fallthrough: true }
 
