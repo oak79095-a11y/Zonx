@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { v4 } from 'uuid'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const UPLOAD_DIR = process.env.UPLOAD_DIR || (
+export const UPLOAD_DIR = process.env.UPLOAD_DIR || (
   process.env.NODE_ENV === 'production'
     ? '/data/uploads'
     : path.join(__dirname, '..', 'uploads')

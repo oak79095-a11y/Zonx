@@ -19,6 +19,7 @@ import notificationRoutes from './routes/notifications.js'
 import { initWs } from './ws.js'
 import { expireListings, startExpirationJob } from './services/expiration.js'
 import { verifyToken } from './utils/auth.js'
+import { UPLOAD_DIR } from './services/storage.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 5199
@@ -65,9 +66,9 @@ app.use((req, res, next) => {
 const STATIC_OPTS = { maxAge: '365d', immutable: true, fallthrough: true }
 
 // Keep chat media behind authentication. A random file path must not grant access.
-app.use('/uploads/listings', express.static(path.join(__dirname, 'uploads', 'listings'), STATIC_OPTS))
-app.use('/uploads/avatars', express.static(path.join(__dirname, 'uploads', 'avatars'), STATIC_OPTS))
-app.use('/uploads/stories', express.static(path.join(__dirname, 'uploads', 'stories'), STATIC_OPTS))
+app.use('/uploads/listings', express.static(path.join(UPLOAD_DIR, 'listings'), STATIC_OPTS))
+app.use('/uploads/avatars', express.static(path.join(UPLOAD_DIR, 'avatars'), STATIC_OPTS))
+app.use('/uploads/stories', express.static(path.join(UPLOAD_DIR, 'stories'), STATIC_OPTS))
 app.use('/uploads/chat', (req, res, next) => {
   const token = req.cookies?.session || req.headers.authorization?.replace('Bearer ', '')
   if (!token) return res.status(401).end()
@@ -96,7 +97,7 @@ app.use('/uploads/chat', (req, res, next) => {
   } catch {
     res.status(401).end()
   }
-}, express.static(path.join(__dirname, 'uploads', 'chat'), { maxAge: '1d', fallthrough: true }))
+}, express.static(path.join(UPLOAD_DIR, 'chat'), { maxAge: '1d', fallthrough: true }))
 
 // API routes
 app.use('/api/auth', authRoutes)
