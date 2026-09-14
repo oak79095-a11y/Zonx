@@ -9,6 +9,7 @@
         "deploy": "gh-pages -d dist",
         "dev": "vite",
         "build": "vite build",
+        "postbuild": "node scripts/copy-404.mjs",
         "preview": "vite preview"
     },
     "dependencies": {

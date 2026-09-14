@@ -23,6 +23,8 @@ import { mediaUrl } from './config.js'
 import { useGlobalWs } from './hooks/useGlobalWs.js'
 
 const PAGE_SIZE = 24
+const APP_BASE = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
+const appPath = (path = '/') => `${APP_BASE}${path}` || '/'
 
 function BackToTop() {
   const [show, setShow] = useState(false)
@@ -56,7 +58,7 @@ function SkeletonCard() {
 }
 
 function AppContent() {
-  const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
+  const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith(appPath('/admin'))
   const [view, setView] = useState(isAdminPath ? 'admin-login' : 'home')
   const [adminUser, setAdminUser] = useState(null)
   const [activeCategory, setActiveCategory] = useState(null)
@@ -210,7 +212,7 @@ function AppContent() {
     setSearchQuery('')
     setView('home')
     setSelectedAd(null)
-    window.history.pushState(null,'','/')
+    window.history.pushState(null, '', appPath('/'))
     window.scrollTo({ top: 0, behavior: 'auto' })
   }
 
@@ -346,7 +348,7 @@ function AppContent() {
     return (
       <>
         <Header onHome={goHome} onMenu={()=>setSidebarOpen(true)} onNotifications={()=>{}} onMessages={()=>{}} likedCount={0} user={adminUser} />
-        <AdminLogin onSuccess={(u)=>{ setAdminUser(u); setView('admin'); window.history.pushState(null,'','/admin') }} />
+         <AdminLogin onSuccess={(u)=>{ setAdminUser(u); setView('admin'); window.history.pushState(null, '', appPath('/admin')) }} />
         <Footer />
         <BottomBar city={city} onCityChange={setCity} onHome={goHome} onPostAd={requireLoginAndPost} user={user} onLogout={handleLogout} onMessages={() => openMessages(null)} />
       </>
@@ -357,7 +359,7 @@ function AppContent() {
     return (
       <>
         <Header onHome={goHome} onMenu={()=>setSidebarOpen(true)} onNotifications={()=>{}} onMessages={()=>{}} likedCount={0} user={adminUser} />
-        <AdminDashboard onLogout={()=>{ setAdminUser(null); setView('admin-login'); window.history.pushState(null,'','/admin') }} />
+         <AdminDashboard onLogout={()=>{ setAdminUser(null); setView('admin-login'); window.history.pushState(null, '', appPath('/admin')) }} />
         <Footer />
         <BottomBar city={city} onCityChange={setCity} onHome={goHome} onPostAd={requireLoginAndPost} user={user} onLogout={handleLogout} onMessages={() => openMessages(null)} />
       </>
