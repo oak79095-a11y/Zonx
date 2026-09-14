@@ -12,9 +12,11 @@ const router = Router()
 export const STORY_TTL_MS = 24 * 60 * 60 * 1000
 
 function cleanExpiredStories(db) {
-  const expired = db.prepare("SELECT media FROM stories WHERE created_at < datetime('now', '-1 day')").all()
+  const retentionDays = Number(process.env.STORY_RETENTION_DAYS ?? 0)
+  if (!Number.isFinite(retentionDays) || retentionDays <= 0) return
+  const expired = db.prepare("SELECT media FROM stories WHERE created_at < datetime('now', ?)").all(`-${retentionDays} days`)
   for (const s of expired) deleteFile(s.media)
-  db.prepare("DELETE FROM stories WHERE created_at < datetime('now', '-1 day')").run()
+  db.prepare("DELETE FROM stories WHERE created_at < datetime('now', ?)").run(`-${retentionDays} days`)
 }
 
 // عرض الستوريات - للمسجلين فقط

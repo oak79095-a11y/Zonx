@@ -129,6 +129,10 @@ app.get('/health', (_req, res) => {
         total: Number(totals?.total || 0),
         active: Number(totals?.active || 0),
       },
+      retention: {
+        listings: Number(process.env.LISTING_EXPIRATION_DAYS ?? 0) > 0 ? '期限ية' : 'دائمة',
+        stories: Number(process.env.STORY_RETENTION_DAYS ?? 0) > 0 ? '期限ية' : 'دائمة',
+      },
     })
   } catch {
     res.status(503).json({ ok: false, service: 'limon-bazaar', database: 'error' })
@@ -160,6 +164,10 @@ app.use((err, _req, res, _next) => {
 })
 
 const db = initDb()
+if (Number(process.env.LISTING_EXPIRATION_DAYS ?? 0) <= 0) {
+  // Preserve active listings indefinitely when production retention is disabled.
+  db.prepare("UPDATE listings SET expires_at = NULL WHERE status = 'active'").run()
+}
 expireListings(db)
 startExpirationJob()
 setInterval(() => expireListings(db), 5 * 60 * 1000).unref()

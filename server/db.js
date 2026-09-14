@@ -307,7 +307,7 @@ function seed(db) {
     try {
       categories.forEach((c, i) => insCat.run(c.id, c.name, c.description, i + 1))
       cities.forEach((c, i) => insCity.run(c.id, c.name, i + 1))
-      insSet.run('free_listing_days', '15')
+       insSet.run('free_listing_days', '0')
       insSet.run('featured_fee', '75000')
       insSet.run('business_monthly', '250000')
       insSet.run('featured_duration_days', '7')

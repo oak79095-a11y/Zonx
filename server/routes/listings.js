@@ -46,11 +46,16 @@ router.post('/', authenticate, (req, res) => {
   if (phone != null && String(phone).trim().length > 30) {
     return res.status(400).json({ error: 'رقم الهاتف غير صالح' })
   }
+  const configuredDays = process.env.LISTING_EXPIRATION_DAYS
   const settings = {
-    free_listing_days: Number(db.prepare("SELECT value FROM admin_settings WHERE key='free_listing_days'").get()?.value || 15),
+    free_listing_days: configuredDays == null
+      ? Number(db.prepare("SELECT value FROM admin_settings WHERE key='free_listing_days'").get()?.value || 0)
+      : Number(configuredDays),
   }
   const id = makeId()
-  const expiresAt = new Date(Date.now() + settings.free_listing_days * 24 * 60 * 60 * 1000).toISOString()
+  const expiresAt = settings.free_listing_days > 0
+    ? new Date(Date.now() + settings.free_listing_days * 24 * 60 * 60 * 1000).toISOString()
+    : null
   db.prepare(`INSERT INTO listings(id,user_id,title,description,price,category_id,city_id,status,phone,expires_at) VALUES(?,?,?,?,?,?,?,?,?,?)`).run(id, userId, title.trim(), description.trim(), Number(price), category_id, city_id, 'active', String(phone || '').trim() || null, expiresAt)
   invalidateListingsCache()
   res.status(201).json({ id, status: 'active', expires_at: expiresAt })

@@ -6,6 +6,8 @@ const EXPIRE_INTERVAL_MS = 5 * 60 * 1000
 let timer = null
 
 export function expireListings(db) {
+  const retentionDays = Number(process.env.LISTING_EXPIRATION_DAYS ?? 0)
+  if (!Number.isFinite(retentionDays) || retentionDays <= 0) return 0
   const now = new Date().toISOString()
   const result = db.prepare(
     `UPDATE listings SET status='expired', updated_at=datetime('now')

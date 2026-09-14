@@ -12,6 +12,10 @@ services:
         value: /data/limon-bazaar.db
       - key: UPLOAD_DIR
         value: /data/uploads
+      - key: LISTING_EXPIRATION_DAYS
+        value: "0"
+      - key: STORY_RETENTION_DAYS
+        value: "0"
       - key: FRONTEND_URL
         value: https://oak79095-a11y.github.io
       - key: JWT_SECRET
