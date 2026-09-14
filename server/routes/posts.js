@@ -2,7 +2,8 @@ import { Router } from 'express'
 import { getDb } from '../db.js'
 import { authenticate, optionalAuth } from '../middleware/auth.js'
 import { singleUpload, uploadHandler } from '../middleware/upload.js'
-import { ALLOWED_TYPES, saveFile, deleteFile } from '../services/storage.js'
+import { ALLOWED_TYPES } from '../services/storage.js'
+import { uploadMedia, destroyMedia } from '../services/media/index.js'
 import { createNotification } from '../services/notifications.js'
 import { makeId } from '../utils/auth.js'
 import { rateLimit } from '../middleware/rateLimit.js'
@@ -28,6 +29,7 @@ function mapPost(row, userId = null) {
     content: row.content,
     media: row.media || null,
     media_type: row.media_type,
+    media_provider: row.media_provider || null,
     created_at: row.created_at,
     likes: Number(row.likes || 0),
     comments: Number(row.comments || 0),
@@ -66,7 +68,7 @@ router.get('/feed', optionalAuth, (req, res) => {
   res.json(rows.map((row) => mapPost(row, userId)))
 })
 
-router.post('/', authenticate, rateLimit({ windowMs: 60 * 1000, max: 20 }), uploadHandler(singleUpload, (req, res) => {
+router.post('/', authenticate, rateLimit({ windowMs: 60 * 1000, max: 20 }), uploadHandler(singleUpload, async (req, res) => {
   const db = getDb()
   const content = String(req.body?.content || '').trim()
   const file = req.file
@@ -75,15 +77,16 @@ router.post('/', authenticate, rateLimit({ windowMs: 60 * 1000, max: 20 }), uplo
   if (file && !ALLOWED_TYPES.has(file.mimetype)) return res.status(400).json({ error: 'نوع الوسائط غير مدعوم' })
 
   const mediaType = file ? mediaTypeOf(file.mimetype) : 'text'
-  const media = file ? saveFile(file, 'posts') : null
+  const asset = file ? await uploadMedia(file, 'posts') : null
+  const media = asset?.url || null
   const id = makeId()
   try {
     db.prepare(`
-      INSERT INTO posts(id,user_id,content,media,media_type)
-      VALUES(?,?,?,?,?)
-    `).run(id, req.user.id, content, media, mediaType)
+      INSERT INTO posts(id,user_id,content,media,media_public_id,media_provider,media_type)
+      VALUES(?,?,?,?,?,?,?)
+    `).run(id, req.user.id, content, media, asset?.publicId || null, asset?.provider || null, mediaType)
   } catch (error) {
-    if (media) deleteFile(media)
+    if (asset) await destroyMedia(asset)
     throw error
   }
 
@@ -145,11 +148,16 @@ router.post('/:id/share', authenticate, rateLimit({ windowMs: 60 * 1000, max: 30
   res.json({ shares })
 })
 
-router.delete('/:id', authenticate, (req, res) => {
+router.delete('/:id', authenticate, async (req, res) => {
   const db = getDb()
-  const post = db.prepare('SELECT media FROM posts WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id)
+  const post = db.prepare('SELECT media, media_public_id, media_provider, media_type FROM posts WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id)
   if (!post) return res.status(404).json({ error: 'المنشور غير موجود' })
-  if (post.media) deleteFile(post.media)
+  if (post.media) await destroyMedia({
+    url: post.media,
+    publicId: post.media_public_id,
+    provider: post.media_provider,
+    resourceType: post.media_type,
+  })
   db.prepare('DELETE FROM posts WHERE id = ?').run(req.params.id)
   res.json({ ok: true })
 })

@@ -18,6 +18,18 @@ services:
         value: "0"
       - key: SESSION_TTL_DAYS
         value: "365"
+      - key: CLASSIFIEDS_ENABLED
+        value: "true"
+      - key: DATABASE_URL
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLOUDINARY_UPLOAD_PRESET
+        sync: false
       - key: FRONTEND_URL
         value: https://oak79095-a11y.github.io
       - key: JWT_SECRET

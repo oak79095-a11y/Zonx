@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { apiFetch, mediaUrl } from '../config.js'
 import { toast } from './Toast.jsx'
+import { fallbackMedia } from '../media/fallback.js'
+import { uploadWithProgress } from '../api/upload.js'
 
 function Author({ author }) {
   return (
@@ -21,6 +23,7 @@ export default function SocialFeed({ user }) {
   const [content, setContent] = useState('')
   const [file, setFile] = useState(null)
   const [publishing, setPublishing] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
   const [comments, setComments] = useState({})
   const [openComments, setOpenComments] = useState(null)
   const syncingRef = useRef(false)
@@ -49,16 +52,11 @@ export default function SocialFeed({ user }) {
       const body = new FormData()
       body.append('content', content.trim())
       if (file) body.append('file', file)
-      const response = await apiFetch('/api/posts', {
-        method: 'POST',
-        credentials: 'include',
-        body,
-      })
-      const data = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(data.error || 'تعذر نشر المنشور')
+      const data = await uploadWithProgress('/api/posts', body, { onProgress: setUploadProgress })
       setPosts((current) => [data, ...current])
       setContent('')
       setFile(null)
+      setUploadProgress(0)
       toast('تم نشر المنشور', 'success')
     } catch (error) {
       toast(error.message, 'error')
@@ -129,8 +127,9 @@ export default function SocialFeed({ user }) {
               {file ? file.name : 'إضافة صورة أو فيديو'}
               <input type="file" accept="image/*,video/*" hidden onChange={(e) => setFile(e.target.files?.[0] || null)} />
             </label>
-            <button type="submit" disabled={publishing || (!content.trim() && !file)}>{publishing ? 'جارٍ النشر...' : 'نشر'}</button>
+            <button type="submit" disabled={publishing || (!content.trim() && !file)}>{publishing ? `${uploadProgress}%` : 'نشر'}</button>
           </div>
+          {publishing && <div className="social-upload-progress" aria-label={`تقدم الرفع ${uploadProgress}%`}><span style={{ width: `${uploadProgress}%` }} /></div>}
         </form>
       )}
 
@@ -141,7 +140,7 @@ export default function SocialFeed({ user }) {
             {post.content && <p className="social-post-content">{post.content}</p>}
             {post.media && (post.media_type === 'video'
               ? <video className="social-post-media" src={mediaUrl(post.media)} controls playsInline preload="metadata" />
-              : <img className="social-post-media" src={mediaUrl(post.media)} alt="منشور" loading="lazy" />)}
+              : <img className="social-post-media" src={mediaUrl(post.media)} alt="منشور" loading="lazy" onError={fallbackMedia} />)}
             <div className="social-post-actions">
               <button type="button" className={post.liked ? 'active' : ''} onClick={() => toggleLike(post)}>♥ {post.likes}</button>
               <button type="button" onClick={() => loadComments(post.id)}>تعليقات {post.comments}</button>

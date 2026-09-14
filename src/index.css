@@ -1959,6 +1959,8 @@ body { padding-bottom: calc(86px + env(safe-area-inset-bottom)); }
 .social-file-button { max-width: 70%; overflow: hidden; color: var(--muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
 .social-composer-actions button { border: 0; border-radius: 999px; padding: 8px 18px; color: #fff; background: var(--red); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 .social-composer-actions button:disabled { opacity: .45; cursor: not-allowed; }
+.social-upload-progress { height: 4px; margin-top: 10px; overflow: hidden; border-radius: 999px; background: #edf0f3; }
+.social-upload-progress span { display: block; height: 100%; border-radius: inherit; background: var(--red); transition: width .15s ease; }
 .social-post-list { display: grid; gap: 14px; }
 .social-post { overflow: hidden; }
 .social-author { display: flex; align-items: center; gap: 9px; padding: 13px 14px 8px; }

@@ -21,6 +21,9 @@ import { initWs } from './ws.js'
 import { expireListings, startExpirationJob } from './services/expiration.js'
 import { verifyToken } from './utils/auth.js'
 import { UPLOAD_DIR } from './services/storage.js'
+import { CLASSIFIEDS_ENABLED } from './config/features.js'
+import { createDatabaseAdapter } from './db/adapter.js'
+import { closePostgres, verifyPostgres } from './db/postgres.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 5199
@@ -102,10 +105,12 @@ app.use('/uploads/chat', (req, res, next) => {
 
 // API routes
 app.use('/api/auth', authRoutes)
-app.use('/api/listings', listingRoutes)
+if (CLASSIFIEDS_ENABLED) app.use('/api/listings', listingRoutes)
 app.use('/api/stories', storyRoutes)
-app.use('/api/subscriptions', subscriptionRoutes)
-app.use('/api/payments', paymentRoutes)
+if (CLASSIFIEDS_ENABLED) {
+  app.use('/api/subscriptions', subscriptionRoutes)
+  app.use('/api/payments', paymentRoutes)
+}
 app.use('/api/admin', adminRoutes)
 app.use('/api/catalog', catalogRoutes)
 app.use('/api/users', userRoutes)
@@ -113,7 +118,7 @@ app.use('/api/messages', messageRoutes)
 app.use('/api/notifications', notificationRoutes)
 app.use('/api/posts', postRoutes)
 
-app.get('/health', (_req, res) => {
+app.get('/health', async (_req, res) => {
   try {
     db.prepare('SELECT 1 AS ok').get()
     const totals = db.prepare(`
@@ -123,6 +128,7 @@ app.get('/health', (_req, res) => {
       FROM listings
     `).get()
     const users = db.prepare('SELECT COUNT(*) AS total FROM users').get()
+    const postgres = await verifyPostgres()
     res.json({
       ok: true,
       service: 'limon-bazaar',
@@ -136,6 +142,10 @@ app.get('/health', (_req, res) => {
       retention: {
         listings: Number(process.env.LISTING_EXPIRATION_DAYS ?? 0) > 0 ? '期限ية' : 'دائمة',
         stories: Number(process.env.STORY_RETENTION_DAYS ?? 0) > 0 ? '期限ية' : 'دائمة',
+      },
+      drivers: {
+        database: postgres.enabled ? 'postgres-configured-sqlite-active' : 'sqlite',
+        classifieds: CLASSIFIEDS_ENABLED,
       },
     })
   } catch {
@@ -168,6 +178,7 @@ app.use((err, _req, res, _next) => {
 })
 
 const db = initDb()
+app.locals.database = createDatabaseAdapter(db)
 if (Number(process.env.LISTING_EXPIRATION_DAYS ?? 0) <= 0) {
   // Preserve active listings indefinitely when production retention is disabled.
   db.prepare("UPDATE listings SET expires_at = NULL WHERE status = 'active'").run()
@@ -187,6 +198,7 @@ async function shutdown(signal) {
   wss.close()
   await new Promise((resolve) => httpServer.close(resolve))
   db.close()
+  await closePostgres()
 }
 
 process.once('SIGINT', () => { shutdown('SIGINT').finally(() => process.exit(0)) })

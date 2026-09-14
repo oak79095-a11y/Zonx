@@ -307,6 +307,8 @@ export function initDb() {
   try { db.exec("ALTER TABLE messages ADD COLUMN media_name TEXT") } catch {}
   try { db.exec("ALTER TABLE messages ADD COLUMN media_size INTEGER") } catch {}
   try { db.exec("ALTER TABLE listing_comments ADD COLUMN user_id TEXT") } catch {}
+  try { db.exec("ALTER TABLE posts ADD COLUMN media_public_id TEXT") } catch {}
+  try { db.exec("ALTER TABLE posts ADD COLUMN media_provider TEXT") } catch {}
   try { db.exec("CREATE INDEX IF NOT EXISTS idx_comments_listing ON listing_comments(listing_id)") } catch {}
   try { db.exec("CREATE INDEX IF NOT EXISTS idx_comments_user ON listing_comments(user_id)") } catch {}
 
