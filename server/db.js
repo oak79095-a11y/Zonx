@@ -11,7 +11,11 @@ function makeGuestPassword() {
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'data', 'limon-bazaar.db')
+const DB_PATH = process.env.DB_PATH || (
+  process.env.NODE_ENV === 'production'
+    ? '/data/limon-bazaar.db'
+    : path.join(__dirname, 'data', 'limon-bazaar.db')
+)
 
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true })
 

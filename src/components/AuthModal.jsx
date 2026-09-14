@@ -135,10 +135,20 @@ export default function AuthModal({ open, onClose, onSuccess }) {
           <button type="submit" className="btn btn-primary" disabled={loading} style={{width:'100%', marginTop:'8px'}}>
             {loading ? 'جاري...' : (mode === 'login' ? 'دخول' : 'انشاء الحساب')}
           </button>
-          {googleClientId && <>
+          <>
             <div className="auth-divider"><span>أو</span></div>
-            <div ref={googleRef} className="google-login" />
-          </>}
+            {googleClientId ? (
+              <div ref={googleRef} className="google-login" />
+            ) : (
+              <button
+                type="button"
+                className="google-login-fallback"
+                onClick={() => setError('زر Google جاهز، لكن يجب ضبط VITE_GOOGLE_CLIENT_ID في إعدادات GitHub أولاً')}
+              >
+                <span className="google-g">G</span> المتابعة باستخدام Google
+              </button>
+            )}
+          </>
           <p className="auth-switch">إنشاء الحسابات الجديدة يتم عبر Google فقط</p>
         </form>
       </div>
