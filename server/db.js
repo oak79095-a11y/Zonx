@@ -11,7 +11,7 @@ function makeGuestPassword() {
 }
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const DB_PATH = process.env.DB_PATH || (
+export const DB_PATH = process.env.DB_PATH || (
   process.env.NODE_ENV === 'production'
     ? '/data/limon-bazaar.db'
     : path.join(__dirname, 'data', 'limon-bazaar.db')

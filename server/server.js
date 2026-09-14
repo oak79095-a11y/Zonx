@@ -5,7 +5,7 @@ import cookieParser from 'cookie-parser'
 import http from 'node:http'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { initDb, getDb } from './db.js'
+import { DB_PATH, initDb, getDb } from './db.js'
 import authRoutes from './routes/auth.js'
 import listingRoutes from './routes/listings.js'
 import storyRoutes from './routes/stories.js'
@@ -114,7 +114,22 @@ app.use('/api/notifications', notificationRoutes)
 app.get('/health', (_req, res) => {
   try {
     db.prepare('SELECT 1 AS ok').get()
-    res.json({ ok: true, service: 'limon-bazaar', database: 'ok' })
+    const totals = db.prepare(`
+      SELECT
+        COUNT(*) AS total,
+        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active
+      FROM listings
+    `).get()
+    res.json({
+      ok: true,
+      service: 'limon-bazaar',
+      database: 'ok',
+      storage: DB_PATH.startsWith('/data/') ? 'persistent-disk' : 'local-filesystem',
+      listings: {
+        total: Number(totals?.total || 0),
+        active: Number(totals?.active || 0),
+      },
+    })
   } catch {
     res.status(503).json({ ok: false, service: 'limon-bazaar', database: 'error' })
   }

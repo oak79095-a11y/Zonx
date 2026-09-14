@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: bayader
+    name: zonx-1
     rootDir: .
     runtime: docker
     plan: starter
