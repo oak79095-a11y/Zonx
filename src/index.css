@@ -1944,6 +1944,66 @@ body { padding-bottom: calc(86px + env(safe-area-inset-bottom)); }
   }
 }
 
+/* Compact feed cards: less scrolling, stronger visual hierarchy. */
+@media (min-width: 561px) {
+  .feed,
+  .stories-section {
+    max-width: 540px !important;
+  }
+
+  .feed {
+    gap: 18px !important;
+  }
+
+  .post-card {
+    border-radius: 16px !important;
+    border-color: #e7e9ed !important;
+    box-shadow: 0 6px 22px rgba(15, 23, 42, 0.06) !important;
+  }
+
+  .post-card:hover {
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.1) !important;
+  }
+
+  .post-head {
+    padding: 10px 12px !important;
+  }
+
+  .post-avatar {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 16px !important;
+  }
+
+  .post-user {
+    gap: 8px !important;
+  }
+
+  .post-seller {
+    font-size: 12.5px !important;
+  }
+
+  .post-loc {
+    font-size: 10px !important;
+  }
+
+  .post-media {
+    aspect-ratio: 4 / 3 !important;
+  }
+
+  .post-actions {
+    padding: 6px 10px 2px !important;
+  }
+
+  .post-caption {
+    padding: 3px 12px 8px !important;
+  }
+
+  .post-comments {
+    padding-inline: 12px !important;
+  }
+}
+
 /* ============ Seller Profile v2 - تصميم صفحة البائع ============ */
 .seller-cover { height: 150px; }
 .seller-head {
