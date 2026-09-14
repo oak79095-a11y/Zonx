@@ -4,7 +4,11 @@ import { fileURLToPath } from 'node:url'
 import { v4 } from 'uuid'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', 'uploads')
+const UPLOAD_DIR = process.env.UPLOAD_DIR || (
+  process.env.NODE_ENV === 'production'
+    ? '/data/uploads'
+    : path.join(__dirname, '..', 'uploads')
+)
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true })
 

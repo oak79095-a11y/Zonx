@@ -8,6 +8,10 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: DB_PATH
+        value: /data/limon-bazaar.db
+      - key: UPLOAD_DIR
+        value: /data/uploads
       - key: FRONTEND_URL
         value: https://oak79095-a11y.github.io
       - key: JWT_SECRET
