@@ -4,8 +4,10 @@
     "version": "1.0.0",
     "type": "module",
     "scripts": {
-        "dev": "node --env-file=.env --watch server.js",
+        "dev": "nodemon server.js",
         "start": "node server.js",
+        "start:production": "node server.js",
+        "check": "node --check server.js",
         "seed": "node --env-file=.env db.js"
     },
     "dependencies": {

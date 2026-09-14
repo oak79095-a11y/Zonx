@@ -188,13 +188,6 @@ export default function AdCard({ ad, onClick, onAvatar, userId = null }) {
   const shownComments = showAllComments ? comments.slice(0, 10) : comments.slice(0, 2)
   const longDesc = ad.description && ad.description.length > 90
 
-<<<<<<< HEAD
-  // الضغط على صورة البائع: افتح ستورياته - ان لم توجد افتح صفحة بروفايله
-  const avatarClick = (e) => {
-    e.stopPropagation()
-    e.preventDefault()
-    onAvatar?.(ad)
-=======
   // فتح ستوري البائع، مع العودة إلى ملفه إذا لم تكن لديه ستوريات.
   const openStoryOrProfile = () => {
     if (!onAvatar) return
@@ -215,7 +208,6 @@ export default function AdCard({ ad, onClick, onAvatar, userId = null }) {
     }, 700)
     window.addEventListener('seller-story-response', onResponse)
     window.dispatchEvent(new CustomEvent('seller-story-request', { detail: { reqId, sellerId: ad.seller_id || null, sellerName: ad.seller_name || '' } }))
->>>>>>> 7c885b4 (Fix API persistence and listing relationships)
   }
 
   const avatarClick = (e) => {
@@ -273,11 +265,7 @@ export default function AdCard({ ad, onClick, onAvatar, userId = null }) {
               title="عرض الستوري او البروفايل"
             />
           ) : (
-<<<<<<< HEAD
-            <span className="post-avatar" onClick={avatarClick} role="img" aria-label={`عرض ملف ${seller}`}>{icon}</span>
-=======
             <span className="post-avatar" onClick={avatarClick} role="button" tabIndex={0} title="خيارات البائع">{icon}</span>
->>>>>>> 7c885b4 (Fix API persistence and listing relationships)
           )}
           <div className="post-user-meta">
             <span className="post-seller">

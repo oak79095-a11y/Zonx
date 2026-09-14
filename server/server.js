@@ -111,7 +111,14 @@ app.use('/api/users', userRoutes)
 app.use('/api/messages', messageRoutes)
 app.use('/api/notifications', notificationRoutes)
 
-app.get('/health', (_req, res) => res.json({ ok: true, service: 'limon-bazaar' }))
+app.get('/health', (_req, res) => {
+  try {
+    db.prepare('SELECT 1 AS ok').get()
+    res.json({ ok: true, service: 'limon-bazaar', database: 'ok' })
+  } catch {
+    res.status(503).json({ ok: false, service: 'limon-bazaar', database: 'error' })
+  }
+})
 
 // In production the API, WebSocket endpoint, and SPA share one origin.
 if (process.env.NODE_ENV === 'production') {
@@ -143,7 +150,20 @@ startExpirationJob()
 setInterval(() => expireListings(db), 5 * 60 * 1000).unref()
 
 const httpServer = http.createServer(app)
-initWs(httpServer)
+const wss = initWs(httpServer)
+
+let shuttingDown = false
+async function shutdown(signal) {
+  if (shuttingDown) return
+  shuttingDown = true
+  console.log(`Received ${signal}; shutting down`)
+  wss.close()
+  await new Promise((resolve) => httpServer.close(resolve))
+  db.close()
+}
+
+process.once('SIGINT', () => { shutdown('SIGINT').finally(() => process.exit(0)) })
+process.once('SIGTERM', () => { shutdown('SIGTERM').finally(() => process.exit(0)) })
 
 httpServer.listen(PORT, () => {
   console.log(`limon-bazaar server running on http://localhost:${PORT}`)
