@@ -233,6 +233,13 @@ function AppContent() {
     window.scrollTo({ top: 0, behavior: 'auto' })
   }
 
+  const openOwnProfile = (account) => {
+    setProfileSeller({ id: account.id, name: account.name, avatar: account.avatar, verified: account.verified })
+    setView('profile')
+    setSidebarOpen(false)
+    window.scrollTo({ top: 0, behavior: 'auto' })
+  }
+
   const openMessages = (peer) => {
     if (!user) {
       authActionRef.current = () => {
@@ -350,7 +357,7 @@ function AppContent() {
         <Header onHome={goHome} onMenu={()=>setSidebarOpen(true)} onNotifications={()=>{}} onMessages={()=>{}} likedCount={0} user={adminUser} />
          <AdminLogin onSuccess={(u)=>{ setAdminUser(u); setView('admin'); window.history.pushState(null, '', appPath('/admin')) }} />
         <Footer />
-        <BottomBar city={city} onCityChange={setCity} onHome={goHome} onPostAd={requireLoginAndPost} user={user} onLogout={handleLogout} onMessages={() => openMessages(null)} />
+         <BottomBar city={city} onCityChange={setCity} onHome={goHome} onPostAd={requireLoginAndPost} user={user} onLogout={handleLogout} onMessages={() => openMessages(null)} onProfile={openOwnProfile} />
       </>
     )
   }
@@ -361,7 +368,7 @@ function AppContent() {
         <Header onHome={goHome} onMenu={()=>setSidebarOpen(true)} onNotifications={()=>{}} onMessages={()=>{}} likedCount={0} user={adminUser} />
          <AdminDashboard onLogout={()=>{ setAdminUser(null); setView('admin-login'); window.history.pushState(null, '', appPath('/admin')) }} />
         <Footer />
-        <BottomBar city={city} onCityChange={setCity} onHome={goHome} onPostAd={requireLoginAndPost} user={user} onLogout={handleLogout} onMessages={() => openMessages(null)} />
+         <BottomBar city={city} onCityChange={setCity} onHome={goHome} onPostAd={requireLoginAndPost} user={user} onLogout={handleLogout} onMessages={() => openMessages(null)} onProfile={openOwnProfile} />
       </>
     )
   }
@@ -506,7 +513,7 @@ function AppContent() {
 
       {view !== 'messages' && <BackToTop />}
       {view !== 'messages' && <Footer />}
-      {view !== 'messages' && <BottomBar city={city} onCityChange={setCity} onHome={goHome} onPostAd={requireLoginAndPost} user={user} onLogout={handleLogout} onSetUser={setUser} onMessages={() => openMessages(null)} />}
+       {view !== 'messages' && <BottomBar city={city} onCityChange={setCity} onHome={goHome} onPostAd={requireLoginAndPost} user={user} onLogout={handleLogout} onSetUser={setUser} onMessages={() => openMessages(null)} onProfile={openOwnProfile} />}
     </>
   )
 }

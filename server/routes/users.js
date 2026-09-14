@@ -20,7 +20,7 @@ function counts(db, userId) {
   return {
     followers: db.prepare('SELECT COUNT(*) as c FROM follows WHERE following_id = ?').get(userId)?.c || 0,
     following: db.prepare('SELECT COUNT(*) as c FROM follows WHERE follower_id = ?').get(userId)?.c || 0,
-    listings: db.prepare("SELECT COUNT(*) as c FROM listings WHERE user_id = ? AND status = 'active'").get(userId)?.c || 0,
+    listings: db.prepare("SELECT COUNT(*) as c FROM listings WHERE user_id = ? AND status IN ('active', 'expired')").get(userId)?.c || 0,
   }
 }
 

@@ -74,7 +74,7 @@ function LogoutIcon() {
   )
 }
 
-export default function BottomBar({ city, onCityChange, onHome, onPostAd, user, onLogout, onSetUser, onMessages }) {
+export default function BottomBar({ city, onCityChange, onHome, onPostAd, user, onLogout, onSetUser, onMessages, onProfile }) {
   const [dark, setDark] = useState(() => document.documentElement.getAttribute('data-theme') === 'dark')
   const [menuOpen, setMenuOpen] = useState(false)
   const [editOpen, setEditOpen] = useState(false)
@@ -210,7 +210,7 @@ export default function BottomBar({ city, onCityChange, onHome, onPostAd, user, 
         <button
           type="button"
           className="bb-item"
-          onClick={() => user ? setMenuOpen(o => !o) : onPostAd()}
+          onClick={() => user ? onProfile?.(user) : onPostAd()}
           aria-label={user ? 'حسابي' : 'تسجيل الدخول'}
           title={user ? 'حسابي' : 'تسجيل الدخول'}
         >

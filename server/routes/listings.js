@@ -12,6 +12,7 @@ import { countView, pendingViewsOf } from '../services/views.js'
 const router = Router()
 const LIST_CACHE_PREFIX = 'listings:'
 const LIST_CACHE_TTL_MS = 5000
+const PUBLIC_STATUSES = "('active', 'expired')"
 
 // Public list responses are cached for a few seconds; any mutation drops them.
 export function invalidateListingsCache() {
@@ -70,7 +71,9 @@ router.get('/', (req, res) => {
   const cached = cacheGet(cacheKey)
   if (cached) return res.json(cached)
 
-  const where = ["l.status = 'active'"]
+   // Keep previously published listings visible to new users after expiry.
+   // Deleted listings are removed from the table and remain private.
+   const where = [`l.status IN ${PUBLIC_STATUSES}`]
   const params = []
   if (ids.length) {
     where.push(`l.id IN (${ids.map(() => '?').join(',')})`)
@@ -134,7 +137,7 @@ router.post('/:id/like', optionalAuth, rateLimit({ windowMs: 60 * 1000, max: 30 
 router.get('/:id/comments', (req, res) => {
   const db = getDb()
   const listing = db.prepare('SELECT id, status FROM listings WHERE id = ?').get(req.params.id)
-  if (!listing || listing.status !== 'active') return res.status(404).json({ error: 'غير موجود' })
+   if (!listing || !['active', 'expired'].includes(listing.status)) return res.status(404).json({ error: 'غير موجود' })
   const rows = db.prepare('SELECT id, name, text, created_at FROM listing_comments WHERE listing_id = ? ORDER BY created_at DESC, rowid DESC').all(req.params.id)
   res.json(rows)
 })
