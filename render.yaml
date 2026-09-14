@@ -18,6 +18,8 @@ services:
         sync: false
       - key: ADMIN_NAME
         value: Bayader Administrator
+      - key: GOOGLE_CLIENT_ID
+        sync: false
     disk:
       name: bayader-data
       mountPath: /data

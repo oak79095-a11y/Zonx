@@ -75,7 +75,7 @@ export default function SellerProfile({ seller, user, onBack, onOpenAd, onSeller
   const verified = Boolean(info?.verified || seller.verified)
   const followers = info ? info.followers : 0
   const following = info ? info.following : 0
-  const isOwner = Boolean(info?.is_me)
+  const isOwner = Boolean(info?.is_platform_owner)
   const isMe = Boolean(info?.is_me)
   const isFollowing = Boolean(info?.is_following)
   const friendStatus = info?.friend_status || 'none'

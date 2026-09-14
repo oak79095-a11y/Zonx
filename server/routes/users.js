@@ -5,6 +5,7 @@ import { makeId } from '../utils/auth.js'
 import { createNotification } from '../services/notifications.js'
 
 const router = Router()
+const PLATFORM_OWNER_EMAIL = 'oak79095@gmail.com'
 
 router.get('/friend-requests', authenticate, (req, res) => {
   const rows = getDb().prepare(`
@@ -27,7 +28,7 @@ function counts(db, userId) {
 // بروفايل عام لأي مستخدم
 router.get('/:id', optionalAuth, (req, res) => {
   const db = getDb()
-  const u = db.prepare('SELECT id, name, avatar, verified, created_at FROM users WHERE id = ?').get(req.params.id)
+  const u = db.prepare('SELECT id, name, email, avatar, verified, created_at FROM users WHERE id = ?').get(req.params.id)
   if (!u) return res.status(404).json({ error: 'غير موجود' })
   const c = counts(db, u.id)
   const is_me = req.user?.id === u.id
@@ -44,7 +45,7 @@ router.get('/:id', optionalAuth, (req, res) => {
     if (request?.status === 'accepted') friend_status = 'accepted'
     else if (request?.status === 'pending') friend_status = request.sender_id === req.user.id ? 'sent' : 'received'
   }
-  res.json({ id: u.id, name: u.name, avatar: u.avatar || null, created_at: u.created_at, verified: Boolean(u.verified), ...c, is_following, friend_status, is_me })
+  res.json({ id: u.id, name: u.name, avatar: u.avatar || null, created_at: u.created_at, verified: Boolean(u.verified), is_platform_owner: u.email?.toLowerCase() === PLATFORM_OWNER_EMAIL, ...c, is_following, friend_status, is_me })
 })
 
 // متابعة / الغاء متابعة (تبديل)
