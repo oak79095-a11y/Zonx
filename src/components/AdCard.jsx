@@ -190,24 +190,7 @@ export default function AdCard({ ad, onClick, onAvatar, userId = null }) {
   const avatarClick = (e) => {
     e.stopPropagation()
     e.preventDefault()
-    if (!onAvatar) return
-    const reqId = Math.random().toString(36).slice(2)
-    let settled = false
-    const onResponse = (ev) => {
-      if (ev.detail?.reqId !== reqId || settled) return
-      settled = true
-      clearTimeout(timer)
-      window.removeEventListener('seller-story-response', onResponse)
-      if (!ev.detail.handled) onAvatar(ad)
-    }
-    const timer = setTimeout(() => {
-      if (settled) return
-      settled = true
-      window.removeEventListener('seller-story-response', onResponse)
-      onAvatar(ad)
-    }, 700)
-    window.addEventListener('seller-story-response', onResponse)
-    window.dispatchEvent(new CustomEvent('seller-story-request', { detail: { reqId, sellerId: ad.seller_id || null, sellerName: ad.seller_name || '' } }))
+    onAvatar?.(ad)
   }
 
   return (
@@ -224,7 +207,7 @@ export default function AdCard({ ad, onClick, onAvatar, userId = null }) {
               title="عرض الستوري او البروفايل"
             />
           ) : (
-            <span className="post-avatar" aria-hidden="true">{icon}</span>
+            <span className="post-avatar" onClick={avatarClick} role="img" aria-label={`عرض ملف ${seller}`}>{icon}</span>
           )}
           <div className="post-user-meta">
             <span className="post-seller">

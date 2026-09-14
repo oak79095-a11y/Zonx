@@ -12,6 +12,8 @@ export default function AuthModal({ open, onClose, onSuccess }) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const fileRef = useRef(null)
+  const googleRef = useRef(null)
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
   useEffect(() => {
     if (!open) {
@@ -26,6 +28,34 @@ export default function AuthModal({ open, onClose, onSuccess }) {
   }, [open])
 
   useOverlay(open, onClose)
+
+  useEffect(() => {
+    if (!open || !googleClientId || !googleRef.current) return
+    const render = () => {
+      if (!window.google?.accounts?.id || !googleRef.current) return
+      googleRef.current.innerHTML = ''
+      window.google.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: async ({ credential }) => {
+          setLoading(true); setError('')
+          try {
+            const r = await fetch('/api/auth/google', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ credential }) })
+            const j = await r.json()
+            if (!r.ok) throw new Error(j.error || 'فشل تسجيل الدخول')
+            onSuccess(j); onClose()
+          } catch (e) { setError(e.message) } finally { setLoading(false) }
+        },
+      })
+      window.google.accounts.id.renderButton(googleRef.current, { theme: 'outline', size: 'large', width: 280, text: 'continue_with' })
+    }
+    if (window.google?.accounts?.id) render()
+    else {
+      const script = document.createElement('script')
+      script.src = 'https://accounts.google.com/gsi/client'
+      script.async = true; script.defer = true; script.onload = render
+      document.head.appendChild(script)
+    }
+  }, [open, googleClientId, onClose, onSuccess])
 
   if (!open) return null
 
@@ -98,13 +128,17 @@ export default function AuthModal({ open, onClose, onSuccess }) {
           {mode === 'register' && (
             <label>الاسم الحقيقي<input value={name} onChange={e=>setName(e.target.value)} placeholder="اسمك الكامل" required /></label>
           )}
-            <label>البريد الالكتروني<input autoComplete="username" value={email} onChange={e=>setEmail(e.target.value)} placeholder="example@mail.com" /></label>
-          <label>رقم الهاتف<input autoComplete="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="09xxxxxxxx" /></label>
+          <label>رقم الهاتف (مفضل)<input autoComplete="tel" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="09xxxxxxxx" /></label>
+          <label>البريد الالكتروني<input autoComplete="username" value={email} onChange={e=>setEmail(e.target.value)} placeholder="اختياري" /></label>
           <label>كلمة السر<input type="password" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} value={password} onChange={e=>setPassword(e.target.value)} placeholder="6 احرف على الاقل" required /></label>
           {error && <p className="form-error">{error}</p>}
           <button type="submit" className="btn btn-primary" disabled={loading} style={{width:'100%', marginTop:'8px'}}>
             {loading ? 'جاري...' : (mode === 'login' ? 'دخول' : 'انشاء الحساب')}
           </button>
+          {mode === 'login' && googleClientId && <>
+            <div className="auth-divider"><span>أو</span></div>
+            <div ref={googleRef} className="google-login" />
+          </>}
           <p className="auth-switch">
             {mode === 'login' ? 'ليس لديك حساب؟ ' : 'لديك حساب بالفعل؟ '}
             <button type="button" onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError('') }}>

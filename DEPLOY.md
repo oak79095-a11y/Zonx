@@ -8,6 +8,7 @@ The application is deployed as one Node service. It serves the Vite build, REST 
 2. Set `FRONTEND_URL` to the service URL, for example `https://bayader.onrender.com`.
 3. Set `ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `ADMIN_NAME` in the Render environment.
 4. Keep the persistent disk mounted at `/data`; otherwise the SQLite database is lost on redeploy.
+5. For Google sign-in, set both `GOOGLE_CLIENT_ID` on Render and `VITE_GOOGLE_CLIENT_ID` during the frontend build. Phone/password login works without Google configuration.
 
 ## Docker
 

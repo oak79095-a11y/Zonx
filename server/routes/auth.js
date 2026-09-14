@@ -5,10 +5,20 @@ import { authenticate } from '../middleware/auth.js'
 import { rateLimit } from '../middleware/rateLimit.js'
 import { singleUpload, uploadHandler } from '../middleware/upload.js'
 import { saveFile } from '../services/storage.js'
+import crypto from 'node:crypto'
 
 function publicUser(u) {
   if (!u) return null
   return { id: u.id, email: u.email, phone: u.phone, name: u.name, role: u.role, avatar: u.avatar || null }
+}
+
+function setSession(res, user) {
+  res.cookie('session', signToken({ id: user.id, role: user.role }), {
+    httpOnly: true,
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+    secure: process.env.NODE_ENV === 'production',
+  })
 }
 
 const router = Router()
@@ -65,6 +75,32 @@ router.post('/login', rateLimit({ max: 5 }), (req, res) => {
     secure: process.env.NODE_ENV === 'production',
   })
   res.json(publicUser(user))
+})
+
+// Google Identity Services sends a signed ID token. Google verifies it and the
+// server creates or reuses the local account, so the browser never gets a JWT.
+router.post('/google', rateLimit({ max: 10 }), async (req, res) => {
+  const credential = String(req.body?.credential || '')
+  if (!credential || !process.env.GOOGLE_CLIENT_ID) return res.status(503).json({ error: 'تسجيل الدخول عبر Google غير مفعّل حاليا' })
+  try {
+    const response = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`)
+    const profile = await response.json()
+    if (!response.ok || profile.aud !== process.env.GOOGLE_CLIENT_ID || profile.email_verified !== 'true' || !profile.email) {
+      return res.status(401).json({ error: 'تعذر التحقق من حساب Google' })
+    }
+    const db = getDb()
+    let user = db.prepare('SELECT * FROM users WHERE email = ?').get(profile.email)
+    if (!user) {
+      const id = makeId()
+      db.prepare('INSERT INTO users(id,email,password,name,role,avatar) VALUES(?,?,?,?,?,?)')
+        .run(id, profile.email, hashPassword(crypto.randomBytes(32).toString('hex')), profile.name || profile.email.split('@')[0], 'user', profile.picture || null)
+      user = db.prepare('SELECT * FROM users WHERE id = ?').get(id)
+    }
+    setSession(res, user)
+    res.json(publicUser(user))
+  } catch {
+    res.status(502).json({ error: 'تعذر الاتصال بخدمة Google' })
+  }
 })
 
 router.post('/logout', (_req, res) => {

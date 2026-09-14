@@ -12,18 +12,28 @@ function timeOf(value) {
 
 export default function NotificationCenter({ onBack }) {
   const [items, setItems] = useState(null)
+  const [requests, setRequests] = useState([])
 
   useEffect(() => {
     let alive = true
     Promise.all([
       fetch('/api/notifications', { credentials: 'include' }).then((r) => r.ok ? r.json() : null),
+      fetch('/api/users/friend-requests', { credentials: 'include' }).then((r) => r.ok ? r.json() : []),
       fetch('/api/notifications/read', { method: 'POST', credentials: 'include' }),
-    ]).then(([data]) => {
+    ]).then(([data, incoming]) => {
       if (alive) setItems(Array.isArray(data?.notifications) ? data.notifications : [])
+      if (alive) setRequests(Array.isArray(incoming) ? incoming : [])
       window.dispatchEvent(new Event('notifications-read'))
     }).catch(() => { if (alive) setItems([]) })
     return () => { alive = false }
   }, [])
+
+  const respond = async (id, action) => {
+    const r = await fetch(`/api/users/friend-requests/${encodeURIComponent(id)}/respond`, {
+      method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action }),
+    })
+    if (r.ok) setRequests((prev) => prev.filter((request) => request.id !== id))
+  }
 
   return (
     <section className="section notifications-section">
@@ -46,6 +56,19 @@ export default function NotificationCenter({ onBack }) {
               <article className={'notification-item' + (!item.read_at ? ' unread' : '')} key={item.id}>
                 <span className="notification-avatar">{item.actor_avatar ? <img src={mediaUrl(item.actor_avatar)} alt="" /> : (item.actor_name || 'م').slice(0, 1)}</span>
                 <div className="notification-copy"><b>{item.message}</b><small>{timeOf(item.created_at)}</small></div>
+              </article>
+            ))}
+          </div>
+          )}
+        {requests.length > 0 && (
+          <div className="friend-requests-panel">
+            <h3>طلبات الصداقة</h3>
+            {requests.map((request) => (
+              <article className="friend-request-item" key={request.id}>
+                <span className="notification-avatar">{request.avatar ? <img src={mediaUrl(request.avatar)} alt="" /> : request.name.slice(0, 1)}</span>
+                <b>{request.name}</b>
+                <button type="button" className="btn btn-primary" onClick={() => respond(request.id, 'accept')}>قبول</button>
+                <button type="button" className="btn btn-outline" onClick={() => respond(request.id, 'reject')}>رفض</button>
               </article>
             ))}
           </div>

@@ -457,6 +457,7 @@ function AppContent() {
             onOpenAd={openAd}
             onSeller={openSellerProfile}
             onMessage={openMessages}
+            onRequireAuth={() => { setAuthOpen(true); toast('سجل الدخول لمتابعة المستخدمين وإضافة الأصدقاء', 'info') }}
             userId={user?.id}
           />
         )}

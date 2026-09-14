@@ -44,12 +44,13 @@ function mapApiAd(l) {
   }
 }
 
-export default function SellerProfile({ seller, user, onBack, onOpenAd, onSeller, onMessage, userId }) {
+export default function SellerProfile({ seller, user, onBack, onOpenAd, onSeller, onMessage, onRequireAuth, userId }) {
   const [ads, setAds] = useState(null)
   const [offline, setOffline] = useState(false)
   const [info, setInfo] = useState(null)
   const [mode, setMode] = useState('grid')
   const [followBusy, setFollowBusy] = useState(false)
+  const [friendBusy, setFriendBusy] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -77,9 +78,25 @@ export default function SellerProfile({ seller, user, onBack, onOpenAd, onSeller
   const isOwner = Boolean(info?.is_me)
   const isMe = Boolean(info?.is_me)
   const isFollowing = Boolean(info?.is_following)
+  const friendStatus = info?.friend_status || 'none'
   const own = ads || []
 
   const canFollow = Boolean(user && seller.id && info && !isMe && !isOwner)
+  const canInteract = Boolean(seller.id && !isMe && !isOwner)
+
+  const sendFriendRequest = async () => {
+    if (!canFollow || friendBusy || friendStatus === 'accepted' || friendStatus === 'received') return
+    setFriendBusy(true)
+    try {
+      const r = await fetch(`/api/users/${encodeURIComponent(seller.id)}/friend-request`, { method: 'POST', credentials: 'include' })
+      const data = await r.json()
+      if (!r.ok) throw new Error(data.error || 'تعذر تنفيذ الطلب')
+      setInfo((prev) => ({ ...prev, friend_status: data.status }))
+      toast(data.status === 'sent' ? 'تم إرسال طلب الصداقة' : 'تم إلغاء طلب الصداقة', 'success')
+    } catch (error) {
+      toast(error.message, 'error')
+    } finally { setFriendBusy(false) }
+  }
 
   const toggleFollow = async () => {
     if (!canFollow || followBusy) return
@@ -131,7 +148,7 @@ export default function SellerProfile({ seller, user, onBack, onOpenAd, onSeller
               <span className="seller-name">
                 {name}
                 {verified && <VerifiedIcon size={17} />}
-                {isAdminProfile && <span className="post-seller-brand">على <ZonxMark /></span>}
+                {verified && <span className="post-seller-brand">على <ZonxMark /></span>}
                 {isOwner ? (
                   <span className="owner-badge">
                     <CrownIcon size={13} /> مالك منصة <b className="owner-platform">ZONX</b>
@@ -141,7 +158,7 @@ export default function SellerProfile({ seller, user, onBack, onOpenAd, onSeller
             </div>
           </div>
 
-          {(canFollow || (seller.id && user && !isMe && !isOwner)) ? (
+          {canInteract ? (
             <div className="seller-follow-row">
               {canFollow ? (
                 <button
@@ -153,6 +170,19 @@ export default function SellerProfile({ seller, user, onBack, onOpenAd, onSeller
                   aria-label={isFollowing ? 'الغاء المتابعة' : 'متابعة'}
                 >
                   {isFollowing ? <UserCheckIcon size={17} /> : <UserPlusIcon size={17} />}
+                </button>
+              ) : (
+                <button type="button" className="profile-icon-btn follow-ic" onClick={onRequireAuth} title="سجل الدخول للمتابعة">سجل للمتابعة</button>
+              )}
+              {canFollow ? (
+                <button
+                  type="button"
+                  className={'profile-icon-btn friend-ic' + (friendStatus === 'sent' ? ' pending' : '')}
+                  onClick={sendFriendRequest}
+                  disabled={friendBusy || friendStatus === 'accepted' || friendStatus === 'received'}
+                  title={friendStatus === 'accepted' ? 'صديقان' : friendStatus === 'sent' ? 'إلغاء طلب الصداقة' : friendStatus === 'received' ? 'لديه طلب وارد' : 'إضافة صديق'}
+                >
+                  {friendStatus === 'accepted' ? '✓ صديقان' : friendStatus === 'received' ? 'طلب وارد' : friendStatus === 'sent' ? 'طلب مرسل' : 'إضافة صديق'}
                 </button>
               ) : null}
               {seller.id && user && !isMe ? (

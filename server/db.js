@@ -138,6 +138,16 @@ export function initDb() {
       UNIQUE(follower_id, following_id)
     );
 
+    CREATE TABLE IF NOT EXISTS friend_requests (
+      id TEXT PRIMARY KEY,
+      sender_id TEXT NOT NULL,
+      recipient_id TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(sender_id, recipient_id)
+    );
+
     CREATE TABLE IF NOT EXISTS notifications (
       id TEXT PRIMARY KEY,
       recipient_id TEXT NOT NULL,
@@ -232,6 +242,8 @@ export function initDb() {
     CREATE INDEX IF NOT EXISTS idx_stories_created ON stories(created_at);
     CREATE INDEX IF NOT EXISTS idx_follows_follower ON follows(follower_id);
     CREATE INDEX IF NOT EXISTS idx_follows_following ON follows(following_id);
+    CREATE INDEX IF NOT EXISTS idx_friend_requests_recipient ON friend_requests(recipient_id, status);
+    CREATE INDEX IF NOT EXISTS idx_friend_requests_sender ON friend_requests(sender_id, status);
     CREATE INDEX IF NOT EXISTS idx_notifications_recipient_read ON notifications(recipient_id, read_at, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_compliance_sessions_expiry ON compliance_sessions(expires_at);
     CREATE INDEX IF NOT EXISTS idx_compliance_audit_created ON compliance_audit(created_at DESC);
