@@ -235,6 +235,9 @@ export function initDb() {
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_listings_status ON listings(status);
     CREATE INDEX IF NOT EXISTS idx_listings_status_created ON listings(status, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_listings_public_feed ON listings(status, featured DESC, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_listings_public_category ON listings(status, category_id, featured DESC, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_listings_public_city ON listings(status, city_id, featured DESC, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_listings_user ON listings(user_id);
     CREATE INDEX IF NOT EXISTS idx_listings_category ON listings(category_id);
     CREATE INDEX IF NOT EXISTS idx_listings_city ON listings(city_id);

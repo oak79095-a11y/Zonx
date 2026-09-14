@@ -11,7 +11,7 @@ import { countView, pendingViewsOf } from '../services/views.js'
 
 const router = Router()
 const LIST_CACHE_PREFIX = 'listings:'
-const LIST_CACHE_TTL_MS = 5000
+const LIST_CACHE_TTL_MS = 30000
 const PUBLIC_STATUSES = "('active', 'expired')"
 
 // Public list responses are cached for a few seconds; any mutation drops them.
@@ -69,7 +69,10 @@ router.get('/', (req, res) => {
 
   const cacheKey = `${LIST_CACHE_PREFIX}${limit}:${offset}:${sellerId || ''}:${categoryId || ''}:${cityId || ''}:${q || ''}:${ids.join(',')}`
   const cached = cacheGet(cacheKey)
-  if (cached) return res.json(cached)
+   if (cached) {
+     res.setHeader('Cache-Control', 'public, max-age=5, stale-while-revalidate=30')
+     return res.json(cached)
+   }
 
    // Keep previously published listings visible to new users after expiry.
    // Deleted listings are removed from the table and remain private.
@@ -97,9 +100,10 @@ router.get('/', (req, res) => {
      ORDER BY l.featured DESC, l.created_at DESC
      LIMIT ? OFFSET ?
    `).all(...params, limit, offset)
-  const out = rows.map(mapListing)
-  cacheSet(cacheKey, out, LIST_CACHE_TTL_MS)
-  res.json(out)
+   const out = rows.map(mapListing)
+   cacheSet(cacheKey, out, LIST_CACHE_TTL_MS)
+   res.setHeader('Cache-Control', 'public, max-age=5, stale-while-revalidate=30')
+   res.json(out)
 })
 
 // ايكات (تبديل)
@@ -107,7 +111,7 @@ router.post('/:id/like', optionalAuth, rateLimit({ windowMs: 60 * 1000, max: 30 
   const db = getDb()
   const listing = db.prepare('SELECT id, status FROM listings WHERE id = ?').get(req.params.id)
   if (!listing) return res.status(404).json({ error: 'غير موجود' })
-  if (listing.status !== 'active') return res.status(404).json({ error: 'غير موجود' })
+   if (!['active', 'expired'].includes(listing.status)) return res.status(404).json({ error: 'غير موجود' })
   const actorKey = req.user?.id ? `user:${req.user.id}` : `ip:${req.ip}`
   const liked = req.body?.liked !== false
   if (liked) {
