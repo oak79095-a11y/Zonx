@@ -22,6 +22,7 @@ import { expireListings, startExpirationJob } from './services/expiration.js'
 import { verifyToken } from './utils/auth.js'
 import { UPLOAD_DIR } from './services/storage.js'
 import { CLASSIFIEDS_ENABLED } from './config/features.js'
+import { mediaProviderName } from './services/media/index.js'
 import { createDatabaseAdapter } from './db/adapter.js'
 import { closePostgres, verifyPostgres } from './db/postgres.js'
 
@@ -146,6 +147,7 @@ app.get('/health', async (_req, res) => {
       drivers: {
         database: postgres.enabled ? 'postgres-configured-sqlite-active' : 'sqlite',
         classifieds: CLASSIFIEDS_ENABLED,
+        media: mediaProviderName,
       },
     })
   } catch {

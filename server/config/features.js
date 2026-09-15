@@ -5,3 +5,8 @@ export const CLOUD_MEDIA_ENABLED = Boolean(
   process.env.CLOUDINARY_API_KEY &&
   process.env.CLOUDINARY_API_SECRET
 )
+export const IMAGEKIT_MEDIA_ENABLED = Boolean(
+  process.env.IMAGEKIT_PUBLIC_KEY &&
+  process.env.IMAGEKIT_PRIVATE_KEY &&
+  process.env.IMAGEKIT_URL_ENDPOINT
+)
