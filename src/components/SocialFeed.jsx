@@ -4,9 +4,9 @@ import { toast } from './Toast.jsx'
 import { fallbackMedia } from '../media/fallback.js'
 import { uploadWithProgress } from '../api/upload.js'
 
-function Author({ author }) {
+function Author({ author, onProfile }) {
   return (
-    <div className="social-author">
+    <button type="button" className="social-author" onClick={() => onProfile?.(author)} aria-label={author.name}>
       {author.avatar
         ? <img src={mediaUrl(author.avatar)} alt={author.name} />
         : <span>{(author.name || 'م').slice(0, 1)}</span>}
@@ -14,11 +14,11 @@ function Author({ author }) {
         <b>{author.name}</b>
         <small>{author.verified ? 'حساب موثق' : 'منشور اجتماعي'}</small>
       </div>
-    </div>
+    </button>
   )
 }
 
-export default function SocialFeed({ user }) {
+export default function SocialFeed({ user, onProfile }) {
   const [posts, setPosts] = useState([])
   const [content, setContent] = useState('')
   const [file, setFile] = useState(null)
@@ -163,7 +163,7 @@ export default function SocialFeed({ user }) {
       <div className="social-post-list">
         {posts.map((post) => (
           <article className="social-post" id={`post-${post.id}`} key={post.id}>
-            <Author author={post.author} />
+            <Author author={post.author} onProfile={onProfile} />
             {post.content && <p className="social-post-content">{post.content}</p>}
             {post.media && (post.media_type === 'video'
               ? <video className="social-post-media" src={mediaUrl(post.media)} controls playsInline preload="metadata" />
