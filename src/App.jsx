@@ -200,6 +200,22 @@ function AppContent() {
   }, [])
 
   useEffect(() => {
+    if (isAdminPath) return undefined
+    const timer = window.setTimeout(() => {
+      setEntrySplashVisible(false)
+      if (!user) setAuthOpen(true)
+    }, 1100)
+    return () => window.clearTimeout(timer)
+  }, [isAdminPath, user])
+
+  useEffect(() => {
+    if (user) {
+      setEntrySplashVisible(false)
+      setAuthOpen(false)
+    }
+  }, [user])
+
+  useEffect(() => {
     let firstLoad = true
     const refreshListings = () => {
       if (document.visibilityState !== 'visible' || listingsSyncRef.current) return
