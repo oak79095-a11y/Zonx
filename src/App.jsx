@@ -23,6 +23,7 @@ import { apiFetch, mediaUrl } from './config.js'
 import { useGlobalWs } from './hooks/useGlobalWs.js'
 
 const PAGE_SIZE = 24
+const SYNC_INTERVAL = 30000
 const APP_BASE = (import.meta.env.BASE_URL || '/').replace(/\/$/, '')
 const appPath = (path = '/') => `${APP_BASE}${path}` || '/'
 
@@ -213,7 +214,7 @@ function AppContent() {
     const timer = setInterval(() => {
       refreshListings()
       if (view === 'browse') setBrowseRefresh((value) => value + 1)
-    }, 1000)
+    }, SYNC_INTERVAL)
     return () => clearInterval(timer)
   }, [view])
 
@@ -301,7 +302,7 @@ function AppContent() {
         .catch(() => {})
     }
     loadUnread()
-    const timer = setInterval(loadUnread, 1000)
+    const timer = setInterval(loadUnread, SYNC_INTERVAL)
     const clear = () => setUnreadNotifications(0)
     window.addEventListener('notifications-read', clear)
     return () => { alive = false; clearInterval(timer); window.removeEventListener('notifications-read', clear) }

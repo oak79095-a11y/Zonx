@@ -29,7 +29,7 @@ export default function StoriesBar({ user }) {
   useEffect(() => {
     if (!user) return undefined
     load()
-    const timer = setInterval(load, 1000)
+    const timer = setInterval(load, 30000)
     return () => clearInterval(timer)
   }, [load, user])
 

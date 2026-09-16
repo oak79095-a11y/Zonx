@@ -493,7 +493,7 @@ export default function Messages({ user, initialPeer, onBack, onRequireAuth }) {
     const timer = setInterval(() => {
       loadConvs()
       syncActiveChat()
-    }, 1000)
+    }, 5000)
     return () => clearInterval(timer)
   }, [user, loadConvs, syncActiveChat])
 

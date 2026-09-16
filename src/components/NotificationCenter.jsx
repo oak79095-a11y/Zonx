@@ -32,7 +32,7 @@ export default function NotificationCenter({ onBack }) {
       }).catch(() => { if (alive) setItems([]) }).finally(() => { syncingRef.current = false })
     }
     load(true)
-    const timer = setInterval(() => load(false), 1000)
+    const timer = setInterval(() => load(false), 30000)
     return () => { alive = false; clearInterval(timer) }
   }, [])
 

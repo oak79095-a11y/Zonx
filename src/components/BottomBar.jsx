@@ -97,11 +97,11 @@ export default function BottomBar({ city, onCityChange, onHome, onPostAd, user, 
         .catch(() => {})
         .finally(() => { unreadSyncingRef.current = false })
     }
-    // Initial fetch + WS updates + one-second fallback poll.
+    // Initial fetch + WS updates + a low-frequency fallback poll.
     poll()
     const onMsg = () => poll()
     window.addEventListener('ws-message', onMsg)
-    const timer = setInterval(poll, 1000)
+    const timer = setInterval(poll, 30000)
     return () => { alive = false; clearInterval(timer); window.removeEventListener('ws-message', onMsg) }
   }, [user])
 
