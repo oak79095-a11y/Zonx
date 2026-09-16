@@ -12,14 +12,14 @@ const mediaTypeOf = (type) => type?.startsWith('image/') ? 'image' : type?.start
 function mapPost(row, userId = null) {
   return { id: row.id, user_id: row.user_id, author: { id: row.user_id, name: row.user_name || 'مستخدم', avatar: row.user_avatar || null, verified: Boolean(row.user_verified) }, content: row.content, media: row.media || null, media_type: row.media_type, media_provider: row.media_provider || null, created_at: row.created_at, likes: Number(row.likes || 0), comments: Number(row.comments || 0), shares: Number(row.share_count || 0), liked: Boolean(userId && row.liked), following: Boolean(row.following) }
 }
-const postSelect = `SELECT p.*, u.name AS user_name, u.avatar AS user_avatar, u.verified AS user_verified, (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS likes, (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = p.id) AS comments, CASE WHEN ? IS NOT NULL AND EXISTS(SELECT 1 FROM post_likes me WHERE me.post_id = p.id AND me.user_id = ?) THEN 1 ELSE 0 END AS liked, CASE WHEN ? IS NOT NULL AND EXISTS(SELECT 1 FROM follows f WHERE f.follower_id = ? AND f.following_id = p.user_id) THEN 1 ELSE 0 END AS following FROM posts p JOIN users u ON u.id = p.user_id WHERE p.visibility = 'public'`
+const postSelect = `SELECT p.*, u.name AS user_name, u.avatar AS user_avatar, u.verified AS user_verified, (SELECT COUNT(*) FROM post_likes pl WHERE pl.post_id = p.id) AS likes, (SELECT COUNT(*) FROM post_comments pc WHERE pc.post_id = p.id) AS comments, CASE WHEN EXISTS(SELECT 1 FROM post_likes me WHERE me.post_id = p.id AND me.user_id = ?) THEN 1 ELSE 0 END AS liked, CASE WHEN EXISTS(SELECT 1 FROM follows f WHERE f.follower_id = ? AND f.following_id = p.user_id) THEN 1 ELSE 0 END AS following FROM posts p JOIN users u ON u.id = p.user_id WHERE p.visibility = 'public'`
 
 router.get('/feed', optionalAuth, async (req, res, next) => {
   try {
     const userId = req.user?.id || null
     const limit = Math.min(Math.max(Number.parseInt(req.query.limit, 10) || 20, 1), 40)
     const offset = Math.max(Number.parseInt(req.query.offset, 10) || 0, 0)
-    const rows = await req.app.locals.database.many(`${postSelect} ORDER BY p.created_at DESC LIMIT ? OFFSET ?`, [userId, userId, userId, userId, limit, offset])
+    const rows = await req.app.locals.database.many(`${postSelect} ORDER BY p.created_at DESC LIMIT ? OFFSET ?`, [userId, userId, limit, offset])
     res.json(rows.map((row) => mapPost(row, userId)))
   } catch (error) { next(error) }
 })
@@ -32,7 +32,7 @@ router.post('/', authenticate, rateLimit({ windowMs: 60000, max: 20 }), uploadHa
   if (file && !ALLOWED_TYPES.has(file.mimetype)) return res.status(400).json({ error: 'نوع الوسائط غير مدعوم' })
   const asset = file ? await uploadMedia(file, 'posts') : null; const id = makeId()
   try { await db.run('INSERT INTO posts(id,user_id,content,media,media_public_id,media_provider,media_type) VALUES(?,?,?,?,?,?,?)', [id, req.user.id, content, asset?.url || null, asset?.publicId || null, asset?.provider || null, file ? mediaTypeOf(file.mimetype) : 'text']) } catch (error) { if (asset) await destroyMedia(asset); throw error }
-  const row = await db.one(`${postSelect} AND p.id = ?`, [req.user.id, req.user.id, req.user.id, req.user.id, id])
+    const row = await db.one(`${postSelect} AND p.id = ?`, [req.user.id, req.user.id, id])
   res.status(201).json(mapPost(row, req.user.id))
 }))
 
