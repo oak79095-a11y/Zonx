@@ -107,12 +107,10 @@ router.get('/listings', async (req, res) => {
   const status = req.query.status || 'pending'
   const rows = await db.many(`
     SELECT l.*, u.name as user_name, u.email as user_email, u.phone as user_phone,
-      STRING_AGG(li.path, '|') as images
+       (SELECT STRING_AGG(li.path, '|') FROM listing_images li WHERE li.listing_id = l.id) as images
     FROM listings l
     LEFT JOIN users u ON u.id = l.user_id
-    LEFT JOIN listing_images li ON li.listing_id = l.id
     WHERE l.status = ?
-    GROUP BY l.id
     ORDER BY l.created_at DESC
   `, [status])
   res.json(rows.map(mapListing))

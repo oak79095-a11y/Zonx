@@ -95,12 +95,11 @@ router.get('/', async (req, res) => {
     params.push(like, like)
   }
    const rows = await db.many(`
-     SELECT l.*, u.name as seller_name, u.avatar as seller_avatar, u.verified as seller_verified, STRING_AGG(li.path, '|') as images
+     SELECT l.*, u.name as seller_name, u.avatar as seller_avatar, u.verified as seller_verified,
+       (SELECT STRING_AGG(li.path, '|') FROM listing_images li WHERE li.listing_id = l.id) as images
      FROM listings l
-     LEFT JOIN listing_images li ON li.listing_id = l.id
      LEFT JOIN users u ON u.id = l.user_id
      WHERE ${where.join(' AND ')}
-     GROUP BY l.id
      ORDER BY l.featured DESC, l.created_at DESC
      LIMIT ? OFFSET ?
    `, [...params, limit, offset])
@@ -204,7 +203,7 @@ router.post('/:id/images', authenticate, rateLimit({ windowMs: 60 * 1000, max: 1
 
 router.get('/mine', authenticate, async (req, res) => {
   const db = req.app.locals.database
-  const rows = await db.many(`SELECT l.*, STRING_AGG(li.path, '|') as images FROM listings l LEFT JOIN listing_images li ON li.listing_id = l.id WHERE l.user_id = ? GROUP BY l.id ORDER BY l.created_at DESC`, [req.user.id])
+   const rows = await db.many(`SELECT l.*, (SELECT STRING_AGG(li.path, '|') FROM listing_images li WHERE li.listing_id = l.id) as images FROM listings l WHERE l.user_id = ? ORDER BY l.created_at DESC`, [req.user.id])
   res.json(rows.map(mapListing))
 })
 
