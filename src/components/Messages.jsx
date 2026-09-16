@@ -659,7 +659,7 @@ export default function Messages({ user, initialPeer, onBack, onRequireAuth }) {
                    </svg>
                  </span>
                  <b>لا توجد محادثات بعد</b>
-                 <small>ابدأ محادثة من صفحة أحد الإعلانات</small>
+                 <small>ابدأ محادثة من صفحة أحد المستخدمين</small>
                </div>
             ) : (
               <div className="msg-items">

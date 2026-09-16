@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { VerifiedIcon } from './icons.jsx'
 import ConversationMonitor from './ConversationMonitor.jsx'
+import { apiFetch } from '../config.js'
 
 const tabs = [
   ['overview', 'نظرة عامة', '⌂'],
@@ -24,7 +25,7 @@ const labels = {
 }
 
 function api(url, options) {
-  return fetch(url, { credentials: 'include', ...options }).then(async (r) => {
+  return apiFetch(url, { credentials: 'include', ...options }).then(async (r) => {
     const data = await r.json().catch(() => ({}))
     if (!r.ok) throw new Error(data.error || 'تعذر تنفيذ الطلب')
     return data

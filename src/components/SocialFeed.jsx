@@ -26,6 +26,8 @@ export default function SocialFeed({ user }) {
   const [uploadProgress, setUploadProgress] = useState(0)
   const [comments, setComments] = useState({})
   const [openComments, setOpenComments] = useState(null)
+  const [commentDrafts, setCommentDrafts] = useState({})
+  const composerRef = useRef(null)
   const syncingRef = useRef(false)
 
   const load = useCallback(() => {
@@ -40,9 +42,18 @@ export default function SocialFeed({ user }) {
 
   useEffect(() => {
     load()
-    const timer = setInterval(load, 1000)
+    const timer = setInterval(load, 30000)
     return () => clearInterval(timer)
   }, [load])
+
+  useEffect(() => {
+    const focusComposer = () => {
+      composerRef.current?.focus()
+      composerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+    window.addEventListener('focus-social-composer', focusComposer)
+    return () => window.removeEventListener('focus-social-composer', focusComposer)
+  }, [])
 
   const publish = async (event) => {
     event.preventDefault()
@@ -106,6 +117,22 @@ export default function SocialFeed({ user }) {
     } catch {}
   }
 
+  const comment = async (postId) => {
+    const text = String(commentDrafts[postId] || '').trim()
+    if (!text) return
+    if (!user) return toast('سجل الدخول للتعليق', 'info')
+    const response = await apiFetch(`/api/posts/${postId}/comments`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+    })
+    if (!response.ok) return toast('تعذر إضافة التعليق', 'error')
+    const created = await response.json()
+    setComments((current) => ({ ...current, [postId]: [created, ...(current[postId] || [])] }))
+    setCommentDrafts((current) => ({ ...current, [postId]: '' }))
+  }
+
   return (
     <section className="social-feed-section">
       <div className="social-feed-head">
@@ -120,7 +147,7 @@ export default function SocialFeed({ user }) {
         <form className="social-composer" onSubmit={publish}>
           <div className="social-composer-row">
             <div className="social-mini-avatar">{(user.name || 'م').slice(0, 1)}</div>
-            <textarea value={content} onChange={(e) => setContent(e.target.value)} maxLength={5000} placeholder="شارك شيئاً مع المجتمع..." />
+             <textarea ref={composerRef} value={content} onChange={(e) => setContent(e.target.value)} maxLength={5000} placeholder="شارك شيئاً مع المجتمع..." />
           </div>
           <div className="social-composer-actions">
             <label className="social-file-button">
@@ -146,7 +173,13 @@ export default function SocialFeed({ user }) {
               <button type="button" onClick={() => loadComments(post.id)}>تعليقات {post.comments}</button>
               <button type="button" onClick={() => share(post)}>مشاركة {post.shares}</button>
             </div>
-            {openComments === post.id && <div className="social-comments">{(comments[post.id] || []).map((comment) => <p key={comment.id}><b>{comment.name}</b> {comment.text}</p>)}</div>}
+             {openComments === post.id && <div className="social-comments">
+               {(comments[post.id] || []).map((comment) => <p key={comment.id}><b>{comment.name}</b> {comment.text}</p>)}
+               {user && <form className="social-comment-form" onSubmit={(event) => { event.preventDefault(); comment(post.id) }}>
+                 <input value={commentDrafts[post.id] || ''} onChange={(event) => setCommentDrafts((current) => ({ ...current, [post.id]: event.target.value }))} maxLength={500} placeholder="اكتب تعليقاً..." />
+                 <button type="submit">إرسال</button>
+               </form>}
+             </div>}
           </article>
         ))}
       </div>

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import useOverlay from '../hooks/useOverlay.js'
-import { mediaUrl } from '../config.js'
+import { apiFetch, mediaUrl } from '../config.js'
 
 export default function EditProfileModal({ open, onClose, user, onSuccess }) {
   const [name, setName] = useState('')
@@ -52,7 +52,7 @@ export default function EditProfileModal({ open, onClose, user, onSuccess }) {
     if (!email.trim() && !phone.trim()) { setError('البريد أو رقم الهاتف مطلوب'); return }
     setSaving(true)
     try {
-      const r = await fetch('/api/auth/update', {
+      const r = await apiFetch('/api/auth/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -65,7 +65,7 @@ export default function EditProfileModal({ open, onClose, user, onSuccess }) {
         try {
           const fd = new FormData()
           fd.append('file', avatar)
-          const ur = await fetch('/api/auth/avatar', { method: 'POST', credentials: 'include', body: fd })
+          const ur = await apiFetch('/api/auth/avatar', { method: 'POST', credentials: 'include', body: fd })
           if (ur.ok) {
             const uj = await ur.json()
             updated = { ...updated, avatar: uj.avatar }
@@ -86,7 +86,7 @@ export default function EditProfileModal({ open, onClose, user, onSuccess }) {
     if (newPassword.length < 6) { setError('كلمة السر الجديدة 6 احرف على الاقل'); return }
     setSavingPass(true)
     try {
-      const r = await fetch('/api/auth/change-password', {
+      const r = await apiFetch('/api/auth/change-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

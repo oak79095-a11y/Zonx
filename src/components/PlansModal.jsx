@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect, useRef } from 'react'
 import { formatPrice } from '../data/format.js'
 import useOverlay from '../hooks/useOverlay.js'
+import { apiFetch } from '../config.js'
 
 const PLAN_META = {
   free: { icon: '🆓', color: 'gray' },
@@ -24,8 +25,8 @@ export default function PlansModal({ open, onClose, user }) {
     if (!open) return
     setLoading(true)
     Promise.all([
-      fetch('/api/subscriptions/plans').then(r => r.json()),
-      user ? fetch('/api/subscriptions/me', { credentials: 'include' }).then(r => r.json()).catch(() => null) : Promise.resolve(null),
+      apiFetch('/api/subscriptions/plans').then(r => r.json()),
+      user ? apiFetch('/api/subscriptions/me', { credentials: 'include' }).then(r => r.json()).catch(() => null) : Promise.resolve(null),
     ]).then(([p, m]) => {
       setPlans(Array.isArray(p) ? p : [])
       setMe(m)
@@ -35,7 +36,7 @@ export default function PlansModal({ open, onClose, user }) {
   if (!open) return null
 
   const reload = () => {
-    fetch('/api/subscriptions/me', { credentials: 'include' }).then(r => r.json()).then(setMe).catch(() => {})
+    apiFetch('/api/subscriptions/me', { credentials: 'include' }).then(r => r.json()).then(setMe).catch(() => {})
   }
 
   const activeSub = me?.subscriptions?.find(s => s.status === 'active')
@@ -46,7 +47,7 @@ export default function PlansModal({ open, onClose, user }) {
     setError('')
     setMessage('')
     try {
-      const r = await fetch('/api/subscriptions/business', {
+      const r = await apiFetch('/api/subscriptions/business', {
         method: 'POST',
         credentials: 'include',
       })
@@ -74,7 +75,7 @@ export default function PlansModal({ open, onClose, user }) {
     try {
       const fd = new FormData()
       fd.append('file', f)
-      const r = await fetch(`/api/payments/${id}/receipt`, { method: 'POST', credentials: 'include', body: fd })
+      const r = await apiFetch(`/api/payments/${id}/receipt`, { method: 'POST', credentials: 'include', body: fd })
       const j = await r.json()
       if (!r.ok) { setError(j.error || 'تعذر رفع الإيصال'); return }
       setMessage('تم رفع الإيصال بنجاح — سيتم تأكيد الاشتراك بعد مراجعة الادارة')

@@ -3,7 +3,7 @@ import { getDb } from '../db.js'
 
 export function authenticate(req, res, next) {
   const token = req.cookies?.session || req.headers.authorization?.replace('Bearer ', '')
-  if (!token) return res.status(401).json({ error: 'غير مauthorize' })
+  if (!token) return res.status(401).json({ error: 'غير مصرح' })
 
   try {
     const payload = verifyToken(token)

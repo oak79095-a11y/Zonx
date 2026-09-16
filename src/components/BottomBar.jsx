@@ -202,7 +202,7 @@ export default function BottomBar({ city, onCityChange, onHome, onPostAd, user, 
         {unread > 0 && <span className="bb-badge">{unread > 9 ? '+9' : unread}</span>}
       </button>
 
-      <button type="button" className="bb-add" onClick={onPostAd} aria-label="اضف اعلانك" title="اضف اعلانك">
+      <button type="button" className="bb-add" onClick={onPostAd} aria-label="انشر منشوراً" title="انشر منشوراً">
         <PlusIcon />
       </button>
 

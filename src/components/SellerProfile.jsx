@@ -88,7 +88,7 @@ export default function SellerProfile({ seller, user, onBack, onOpenAd, onSeller
     if (!canFollow || friendBusy || friendStatus === 'accepted' || friendStatus === 'received') return
     setFriendBusy(true)
     try {
-      const r = await fetch(`/api/users/${encodeURIComponent(seller.id)}/friend-request`, { method: 'POST', credentials: 'include' })
+      const r = await apiFetch(`/api/users/${encodeURIComponent(seller.id)}/friend-request`, { method: 'POST', credentials: 'include' })
       const data = await r.json()
       if (!r.ok) throw new Error(data.error || 'تعذر تنفيذ الطلب')
       setInfo((prev) => ({ ...prev, friend_status: data.status }))

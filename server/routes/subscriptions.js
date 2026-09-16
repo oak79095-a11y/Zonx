@@ -20,7 +20,7 @@ function getSettings(db) {
 }
 
 const PLANS = {
-  free: { name: 'مجاني', price: 0, days: 15, desc: '列表ة عادية' },
+  free: { name: 'مجاني', price: 0, days: 15, desc: 'لائحة عادية' },
   featured: { name: 'مميز', price: null, days: 7, desc: 'ظهر في الأعلى' },
   business: { name: 'أعمال', price: null, days: 30, desc: 'محل تخصصي' },
 }
@@ -51,9 +51,9 @@ router.get('/plans', (req, res) => {
       period: `لكل ${s.featured_duration_days} أيام`,
       features: [
         'وسام "مميز" برتقالي بارز',
-        'تصدّر نتائجبحث في التصنيف',
+        'تصدّر نتائج البحث في التصنيف',
         'مدة أطول و مشاهدة أكثر',
-        'المدفوعة عند الاستلام أو عبر مكتب صرافة',
+        'الدفع عند الاستلام أو عبر مكتب صرافة',
       ],
       cta: 'ميّز إعلانك',
     },
@@ -64,9 +64,9 @@ router.get('/plans', (req, res) => {
       price: s.business_monthly,
       period: 'كل شهر',
       features: [
-        ' Publish إعلانات غير محدودة',
+        'نشر إعلانات غير محدودة',
         'تصنيف خاص باسم محلّك',
-        ' ظهور في الأعلى',
+        'ظهور في الأعلى',
         'إحصائيات المشاهدات الشهرية',
         'أولوية في خدمة العملاء',
       ],
@@ -79,8 +79,8 @@ router.post('/featured/:listingId', authenticate, (req, res) => {
   const db = getDb()
   const s = getSettings(db)
   const listing = db.prepare('SELECT * FROM listings WHERE id = ? AND user_id = ?').get(req.params.listingId, req.user.id)
-  if (!listing) return res.status(404).json({ error: 'الannounce غير موجود' })
-  if (listing.status !== 'active') return res.status(400).json({ error: 'الannounce غير نشط' })
+  if (!listing) return res.status(404).json({ error: 'الإعلان غير موجود' })
+  if (listing.status !== 'active') return res.status(400).json({ error: 'الإعلان غير نشط' })
 
   const paymentId = makeId()
   const amount = s.featured_fee

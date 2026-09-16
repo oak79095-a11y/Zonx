@@ -5,7 +5,6 @@ import AdGrid from './components/AdGrid.jsx'
 import AdCard from './components/AdCard.jsx'
 import AdDetail from './components/AdDetail.jsx'
 import Sidebar from './components/Sidebar.jsx'
-import PostAdModal from './components/PostAdModal.jsx'
 import AuthModal from './components/AuthModal.jsx'
 import StoriesBar from './components/StoriesBar.jsx'
 import SellerProfile from './components/SellerProfile.jsx'
@@ -241,7 +240,7 @@ function AppContent() {
     setView('detail')
     window.scrollTo({ top: 0, behavior: 'auto' })
     // Fetch the detail endpoint so the server records a view and returns fresh data.
-    fetch(`/api/listings/${encodeURIComponent(ad.id)}`)
+    apiFetch(`/api/listings/${encodeURIComponent(ad.id)}`)
       .then((r) => r.ok ? r.json() : null)
       .then((fresh) => { if (fresh) setSelectedAd(mapApiAd(fresh)) })
       .catch(() => {})
@@ -334,13 +333,15 @@ function AppContent() {
     toast('تم نشر اعلانك بنجاح ✓', 'success')
   }
 
-  const requireLoginAndPost = () => {
-    if (user) {
-      setPostOpen(true)
+  const openSocialComposer = () => {
+    setView('home')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    if (!user) {
+      setAuthOpen(true)
+      toast('سجل الدخول لنشر منشور', 'info')
       return
     }
-    authActionRef.current = () => setPostOpen(true)
-    setAuthOpen(true)
+    window.dispatchEvent(new Event('focus-social-composer'))
   }
 
   const handleAuthSuccess = (nextUser) => {
@@ -383,7 +384,7 @@ function AppContent() {
         <Header onHome={goHome} onMenu={()=>setSidebarOpen(true)} onNotifications={()=>{}} onMessages={()=>{}} likedCount={0} user={adminUser} />
          <AdminLogin onSuccess={(u)=>{ setAdminUser(u); setView('admin'); window.history.pushState(null, '', appPath('/admin')) }} />
         <Footer />
-         <BottomBar city={city} onCityChange={setCity} onHome={goHome} onPostAd={requireLoginAndPost} user={user} onLogout={handleLogout} onMessages={() => openMessages(null)} onProfile={openOwnProfile} />
+          <BottomBar city={city} onCityChange={setCity} onHome={goHome} onPostAd={openSocialComposer} user={user} onLogout={handleLogout} onMessages={() => openMessages(null)} onProfile={openOwnProfile} />
       </>
     )
   }
@@ -394,7 +395,7 @@ function AppContent() {
         <Header onHome={goHome} onMenu={()=>setSidebarOpen(true)} onNotifications={()=>{}} onMessages={()=>{}} likedCount={0} user={adminUser} />
          <AdminDashboard onLogout={()=>{ setAdminUser(null); setView('admin-login'); window.history.pushState(null, '', appPath('/admin')) }} />
         <Footer />
-         <BottomBar city={city} onCityChange={setCity} onHome={goHome} onPostAd={requireLoginAndPost} user={user} onLogout={handleLogout} onMessages={() => openMessages(null)} onProfile={openOwnProfile} />
+          <BottomBar city={city} onCityChange={setCity} onHome={goHome} onPostAd={openSocialComposer} user={user} onLogout={handleLogout} onMessages={() => openMessages(null)} onProfile={openOwnProfile} />
       </>
     )
   }
@@ -408,74 +409,13 @@ function AppContent() {
         </div>
       )}
       <Sidebar open={sidebarOpen} onClose={()=>setSidebarOpen(false)} city={city} onCityChange={setCity} user={user} onSetUser={setUser} onLogout={handleLogout} onRequireAuth={()=>setAuthOpen(true)} />
-      <PostAdModal open={postOpen} onClose={()=>setPostOpen(false)} onCreate={handleCreateAd} />
-      <AuthModal open={authOpen} onClose={closeAuth} onSuccess={handleAuthSuccess} />
+       <AuthModal open={authOpen} onClose={closeAuth} onSuccess={handleAuthSuccess} />
 
       <main>
         {view === 'home' && (
           <>
-            <Hero
-              searchQuery={searchQuery}
-              onSearchChange={setSearchQuery}
-              onSearch={handleSearch}
-              total={ads.length}
-              quickCategories={categories}
-              onQuickCategory={goBrowse}
-            />
             <SocialFeed user={user} />
-            {/* شريط الستوريات - للمسجلين فقط مثل فيسبوك */}
             <StoriesBar user={user} />
-            {loading ? (
-              <section className="section">
-                <div className="container">
-                  <div className="feed">
-                    {[0, 1, 2].map(i => <SkeletonCard key={i} />)}
-                  </div>
-                </div>
-              </section>
-            ) : (
-            <>
-            {featuredAds.length > 0 && (
-            <section className="section">
-              <div className="container">
-                <div style={{textAlign:'center', marginBottom:'16px'}}>
-                  <h2 className="section-title">اعلانات مميزة</h2>
-                  <div className="red-line small" style={{margin:'8px auto 0'}}></div>
-                  <p className="section-sub">مختارة لك</p>
-                </div>
-                <div className="feed">
-                   {featuredAds.map((ad) => (<AdCard key={ad.id} ad={ad} userId={user?.id} onClick={openAd} onAvatar={openSellerProfile} />))}
-                </div>
-              </div>
-            </section>
-            )}
-            {latestAds.length > 0 && (
-            <section className="section">
-              <div className="container">
-                <div style={{textAlign:'center', marginBottom:'16px'}}>
-                  <h2 className="section-title">احدث الاعلانات</h2>
-                  <div className="red-line small" style={{margin:'8px auto 0'}}></div>
-                </div>
-                <div className="feed">
-                   {latestAds.map((ad) => (<AdCard key={ad.id} ad={ad} userId={user?.id} onClick={openAd} onAvatar={openSellerProfile} />))}
-                </div>
-              </div>
-            </section>
-            )}
-            {featuredAds.length === 0 && latestAds.length === 0 && (
-              <section className="section">
-                <div className="container">
-                  <div className="empty-state">
-                    <span className="empty-icon" aria-hidden="true">📭</span>
-                    <h3>لا توجد اعلانات بعد</h3>
-                    <p>كن اول من ينشر اعلانا في السوق</p>
-                    <button type="button" className="btn btn-primary" onClick={requireLoginAndPost}>+ اضف اعلانك</button>
-                  </div>
-                </div>
-              </section>
-            )}
-            </>
-            )}
           </>
         )}
 
@@ -540,7 +480,7 @@ function AppContent() {
 
       {view !== 'messages' && <BackToTop />}
       {view !== 'messages' && <Footer />}
-       {view !== 'messages' && <BottomBar city={city} onCityChange={setCity} onHome={goHome} onPostAd={requireLoginAndPost} user={user} onLogout={handleLogout} onSetUser={setUser} onMessages={() => openMessages(null)} onProfile={openOwnProfile} />}
+        {view !== 'messages' && <BottomBar city={city} onCityChange={setCity} onHome={goHome} onPostAd={openSocialComposer} user={user} onLogout={handleLogout} onSetUser={setUser} onMessages={() => openMessages(null)} onProfile={openOwnProfile} />}
     </>
   )
 }

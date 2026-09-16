@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { apiFetch } from '../config.js'
 
 function timeOf(value) {
   try { return new Date(String(value).replace(' ', 'T') + 'Z').toLocaleString('ar-SY', { dateStyle: 'medium', timeStyle: 'short' }) } catch { return '' }
@@ -11,7 +12,7 @@ export default function ConversationMonitor() {
   const [loading, setLoading] = useState(false)
   const [notice, setNotice] = useState('')
 
-  const load = () => fetch('/api/admin/conversations', { credentials: 'include' }).then((r) => r.ok ? r.json() : []).then(setConversations).catch(() => setConversations([]))
+  const load = () => apiFetch('/api/admin/conversations', { credentials: 'include' }).then((r) => r.ok ? r.json() : []).then(setConversations).catch(() => setConversations([]))
   useEffect(() => { load() }, [])
 
   const observe = async (conversation) => {
@@ -19,10 +20,10 @@ export default function ConversationMonitor() {
     if (!reason) return
     setLoading(true)
     try {
-      const start = await fetch(`/api/admin/conversations/${conversation.id}/observe`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ reason }) })
+      const start = await apiFetch(`/api/admin/conversations/${conversation.id}/observe`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ reason }) })
       const session = await start.json()
       if (!start.ok) throw new Error(session.error || 'تعذر فتح جلسة المراقبة')
-      const response = await fetch(`/api/admin/conversations/${conversation.id}/messages?session=${encodeURIComponent(session.session)}`, { credentials: 'include' })
+      const response = await apiFetch(`/api/admin/conversations/${conversation.id}/messages?session=${encodeURIComponent(session.session)}`, { credentials: 'include' })
       const rows = await response.json()
       if (!response.ok) throw new Error(rows.error || 'تعذر تحميل المحادثة')
       setActive({ ...conversation, expires: Date.now() + session.expires_in * 1000 })

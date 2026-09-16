@@ -40,7 +40,7 @@ export default function AuthModal({ open, onClose, onSuccess }) {
         callback: async ({ credential }) => {
           setLoading(true); setError('')
           try {
-            const r = await fetch('/api/auth/google', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ credential }) })
+             const r = await apiFetch('/api/auth/google', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ credential }) })
             const j = await r.json()
             if (!r.ok) throw new Error(j.error || 'فشل تسجيل الدخول')
             onSuccess(j); onClose()
@@ -122,7 +122,7 @@ export default function AuthModal({ open, onClose, onSuccess }) {
               <button type="button" className="auth-avatar-btn" onClick={() => fileRef.current?.click()}>
                 {avatarPreview ? <img src={avatarPreview} alt="صورتي" /> : <span>📷</span>}
               </button>
-              <span className="upload-hint">صورتك الشخصية (تظهر على اعلاناتك)</span>
+               <span className="upload-hint">صورتك الشخصية التي تظهر في منشوراتك</span>
               <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickAvatar} />
             </div>
           )}

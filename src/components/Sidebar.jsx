@@ -323,7 +323,7 @@ export default function Sidebar({ open, onClose, city, onCityChange, user, onSet
                   <span className="set-row-icon" aria-hidden="true">🇸🇾</span>
                   <div className="set-row-text">
                     <span className="set-row-name">سوق سورية</span>
-                    <span className="set-row-sub">اعلانات مبوبة بكل المدن</span>
+                    <span className="set-row-sub">تواصل مع المجتمع وشارك أفكارك</span>
                   </div>
                 </div>
               </div>
