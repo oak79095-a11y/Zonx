@@ -3542,3 +3542,90 @@ body, button, input, textarea, select { font-family: 'Cairo', -apple-system, Bli
   .story-avatar, .story-add-avatar { width: 58px; height: 58px; }
   .story-name, .story-add-text { max-width: 64px; font-size: 9.5px; }
 }
+
+/* ============ New social visual language ============ */
+body, button, input, textarea, select { font-family: 'Alexandria', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+body { background: #f6f6f8; }
+body::before { display: none; }
+.header {
+  height: 68px;
+  background: rgba(255,255,255,.82);
+  border-bottom-color: rgba(15, 23, 42, .07);
+  box-shadow: 0 8px 30px rgba(15,23,42,.045);
+}
+.header-inner { max-width: 1220px; }
+.zonx-icon { background: linear-gradient(135deg, #ff304f 0%, #ff7a45 100%); box-shadow: 0 9px 22px rgba(255,48,79,.23); }
+.zonx-wordmark { font-family: 'Playfair Display', serif; letter-spacing: 5px; }
+.menu-btn, .hd-message, .hd-heart { width: 42px; height: 42px; border-radius: 14px; background: rgba(255,255,255,.9); border-color: rgba(15,23,42,.09); box-shadow: 0 5px 16px rgba(15,23,42,.06); }
+.header-quick-actions { gap: 10px; }
+.stories-section {
+  padding: 20px 0 18px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.stories-section .container { max-width: 760px; padding: 0 12px; }
+.stories-bar {
+  position: relative;
+  gap: 17px;
+  padding: 17px 20px 15px;
+  border: 1px solid rgba(255,255,255,.9);
+  border-radius: 26px;
+  background: rgba(255,255,255,.78);
+  box-shadow: 0 18px 45px rgba(15,23,42,.08), 0 2px 4px rgba(15,23,42,.03);
+  backdrop-filter: blur(20px);
+}
+.stories-bar::before { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(110deg, rgba(255,48,79,.08), transparent 28%, transparent 70%, rgba(122,47,191,.06)); }
+.story-tile { width: 74px; height: 92px; flex-basis: 74px; }
+.story-item-wrap { width: 74px; flex-basis: 74px; }
+.story-avatar, .story-add-avatar { width: 68px; height: 68px; box-shadow: 0 8px 18px rgba(15,23,42,.12); }
+.story-avatar::before, .story-add-avatar::before { content: ''; position: absolute; inset: -2px; border-radius: 50%; background: linear-gradient(135deg, #ff304f, #ffb347 45%, #8d43d5); z-index: -1; }
+.story-name, .story-add-text { color: #667085; font-size: 10px; font-weight: 600; }
+.story-add-text { color: #1f2937; }
+.story-add-avatar { background: #eef0f4; }
+.story-add-plus { background: #ff304f; box-shadow: 0 4px 10px rgba(255,48,79,.3); }
+.social-feed-section {
+  position: relative;
+  width: min(700px, calc(100% - 32px));
+  margin-top: 8px;
+}
+.social-feed-section::before { content: ''; position: fixed; top: 260px; right: 8%; width: 230px; height: 230px; border-radius: 50%; background: rgba(255,48,79,.08); filter: blur(80px); pointer-events: none; z-index: -1; }
+.social-feed-head { margin-bottom: 20px; padding: 0 6px; }
+.social-feed-head h2 { font-size: 24px; font-weight: 700; letter-spacing: -.8px; }
+.social-kicker { color: #ff304f; font-size: 10px; letter-spacing: .18em; }
+.social-live-dot { padding: 8px 14px; border: 0; background: rgba(255,255,255,.75); color: #667085; box-shadow: 0 8px 22px rgba(15,23,42,.06); }
+.social-composer, .social-post {
+  position: relative;
+  border: 1px solid rgba(255,255,255,.96);
+  border-radius: 26px;
+  background: rgba(255,255,255,.88);
+  box-shadow: 0 18px 45px rgba(15,23,42,.075);
+  backdrop-filter: blur(18px);
+}
+.social-composer::before, .social-post::before { content: ''; position: absolute; top: 0; left: 12%; right: 12%; height: 2px; border-radius: 0 0 9px 9px; background: linear-gradient(90deg, #ff304f, #ff9a44, #8d43d5); opacity: .75; }
+.social-composer { padding: 18px; margin-bottom: 20px; }
+.social-composer textarea { min-height: 50px; border-radius: 18px; background: #f4f5f7; font-size: 12px; }
+.social-post-list { gap: 20px; }
+.social-post { overflow: hidden; }
+.social-author { padding: 18px 18px 12px; }
+.social-author > span, .social-author img { width: 44px; height: 44px; flex-basis: 44px; box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(255,48,79,.25), 0 5px 12px rgba(15,23,42,.12); }
+.social-author b { font-size: 12px; font-weight: 700; }
+.social-author small { font-size: 9px; }
+.social-post-content { margin: 8px 18px 16px; font-size: 13px; line-height: 2; }
+.social-post-media { max-height: 700px; }
+.social-post-actions { padding: 12px 15px 14px; border-top-color: rgba(15,23,42,.06); }
+.social-post-actions button { min-height: 36px; color: #667085; font-size: 11px; }
+.social-post-actions button:hover, .social-post-actions button.active { color: #ff304f; background: rgba(255,48,79,.08); }
+.bottom-bar { border-color: rgba(255,255,255,.9); background: rgba(255,255,255,.82); box-shadow: 0 18px 42px rgba(15,23,42,.13); backdrop-filter: blur(20px); }
+.bb-post { background: linear-gradient(135deg, #ff304f, #ff614b); box-shadow: 0 12px 28px rgba(255,48,79,.3); }
+@media (max-width: 560px) {
+  .header { height: 60px; }
+  .stories-section { padding: 12px 0 10px; }
+  .stories-bar { gap: 13px; padding: 14px 15px 12px; border-radius: 22px; }
+  .story-tile, .story-item-wrap { width: 64px; flex-basis: 64px; }
+  .story-avatar, .story-add-avatar { width: 58px; height: 58px; }
+  .social-feed-section { width: calc(100% - 20px); margin-top: 4px; }
+  .social-composer, .social-post { border-radius: 20px; }
+  .social-feed-head h2 { font-size: 20px; }
+}
