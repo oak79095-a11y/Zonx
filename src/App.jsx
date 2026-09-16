@@ -58,6 +58,18 @@ function SkeletonCard() {
   )
 }
 
+function EntrySplash() {
+  return (
+    <div className="entry-splash" role="presentation">
+      <div className="entry-splash-glow" />
+      <div className="entry-splash-brand">
+        <span className="zonx-icon" aria-hidden="true"><span className="zonx-icon-x">✕</span></span>
+        <span className="zonx-wordmark">ZON<span className="zonx-x">X</span></span>
+      </div>
+    </div>
+  )
+}
+
 function AppContent() {
   const isAdminPath = typeof window !== 'undefined' && window.location.pathname.startsWith(appPath('/admin'))
   const [view, setView] = useState(isAdminPath ? 'admin-login' : 'home')
@@ -71,6 +83,7 @@ function AppContent() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [postOpen, setPostOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
+  const [entrySplashVisible, setEntrySplashVisible] = useState(!isAdminPath)
   const authActionRef = useRef(null)
   const [user, setUser] = useState(null)
   const [ads, setAds] = useState(initialAds)
@@ -401,6 +414,8 @@ function AppContent() {
       </>
     )
   }
+
+  if (entrySplashVisible) return <EntrySplash />
 
   return (
     <>
