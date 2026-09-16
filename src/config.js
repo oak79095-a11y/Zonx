@@ -7,7 +7,10 @@ export function apiUrl(path) {
 }
 
 export function apiFetch(path, options) {
-  return fetch(apiUrl(path), options)
+  const token = localStorage.getItem('bazaar-session-token')
+  const headers = new Headers(options?.headers || {})
+  if (token && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${token}`)
+  return fetch(apiUrl(path), { ...options, headers })
 }
 
 export const ICE_SERVERS = [

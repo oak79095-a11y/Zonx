@@ -41,9 +41,10 @@ export default function AuthModal({ open, onClose, onSuccess }) {
           setLoading(true); setError('')
           try {
              const r = await apiFetch('/api/auth/google', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ credential }) })
-            const j = await r.json()
-            if (!r.ok) throw new Error(j.error || 'فشل تسجيل الدخول')
-            onSuccess(j); onClose()
+             const j = await r.json()
+             if (!r.ok) throw new Error(j.error || 'فشل تسجيل الدخول')
+             if (j.token) localStorage.setItem('bazaar-session-token', j.token)
+             onSuccess(j); onClose()
           } catch (e) { setError(e.message) } finally { setLoading(false) }
         },
       })
@@ -90,6 +91,7 @@ export default function AuthModal({ open, onClose, onSuccess }) {
       const j = await r.json()
       if (!r.ok) { setError(j.error || 'خطأ'); return }
       let user = j
+      if (j.token) localStorage.setItem('bazaar-session-token', j.token)
       if (avatar) {
         try {
           const fd = new FormData()

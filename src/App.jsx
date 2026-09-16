@@ -372,6 +372,7 @@ function AppContent() {
 
   const handleLogout = () => {
     apiFetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).catch(() => {})
+    localStorage.removeItem('bazaar-session-token')
     // Per-user likes stay in localStorage so they are restored on the next login.
     setUser(null)
     setLikedCount(0)

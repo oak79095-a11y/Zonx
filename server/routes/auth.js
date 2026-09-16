@@ -16,10 +16,12 @@ const SESSION_TTL_DAYS = Math.max(Number(process.env.SESSION_TTL_DAYS || 365), 1
 const SESSION_MAX_AGE = SESSION_TTL_DAYS * 24 * 60 * 60 * 1000
 
 function setSession(res, user) {
-  res.cookie('session', signToken({ id: user.id, role: user.role }, `${SESSION_TTL_DAYS}d`), {
+  const token = signToken({ id: user.id, role: user.role }, `${SESSION_TTL_DAYS}d`)
+  res.cookie('session', token, {
     httpOnly: true, sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     maxAge: SESSION_MAX_AGE, secure: process.env.NODE_ENV === 'production',
   })
+  return token
 }
 
 router.post('/register', rateLimit({ max: 5 }), async (req, res, next) => {
@@ -33,8 +35,8 @@ router.post('/register', rateLimit({ max: 5 }), async (req, res, next) => {
     if (existing) return res.status(409).json({ error: 'الحساب موجود بالفعل' })
     const id = makeId()
     await db.run('INSERT INTO users(id,email,phone,password,name,role) VALUES(?,?,?,?,?,?)', [id, email || null, phone || null, hashPassword(password), name.trim(), 'user'])
-    setSession(res, { id, role: 'user' })
-    res.json(publicUser(await db.one('SELECT * FROM users WHERE id = ?', [id])))
+    const token = setSession(res, { id, role: 'user' })
+    res.json({ ...publicUser(await db.one('SELECT * FROM users WHERE id = ?', [id])), token })
   } catch (error) { next(error) }
 })
 
@@ -45,8 +47,8 @@ router.post('/login', rateLimit({ max: 5 }), async (req, res, next) => {
     if (!identifier || !password) return res.status(400).json({ error: 'البيانات ناقصة' })
     const user = await req.app.locals.database.one('SELECT * FROM users WHERE email = ? OR phone = ? OR name = ?', [email || null, phone || null, name || identifier])
     if (!user || !verifyPassword(password, user.password)) return res.status(401).json({ error: 'البيانات غير صحيحة' })
-    setSession(res, user)
-    res.json(publicUser(user))
+    const token = setSession(res, user)
+    res.json({ ...publicUser(user), token })
   } catch (error) { next(error) }
 })
 
@@ -64,8 +66,8 @@ router.post('/google', rateLimit({ max: 10 }), async (req, res) => {
       await db.run('INSERT INTO users(id,email,password,name,role,avatar) VALUES(?,?,?,?,?,?)', [id, profile.email, hashPassword(crypto.randomBytes(32).toString('hex')), profile.name || profile.email.split('@')[0], 'user', profile.picture || null])
       user = await db.one('SELECT * FROM users WHERE id = ?', [id])
     }
-    setSession(res, user)
-    res.json(publicUser(user))
+    const token = setSession(res, user)
+    res.json({ ...publicUser(user), token })
   } catch { res.status(502).json({ error: 'تعذر الاتصال بخدمة Google' }) }
 })
 

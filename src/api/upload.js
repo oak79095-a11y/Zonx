@@ -5,6 +5,8 @@ export function uploadWithProgress(path, body, { onProgress, credentials = 'incl
     const xhr = new XMLHttpRequest()
     xhr.open('POST', apiUrl(path))
     xhr.withCredentials = credentials === 'include'
+    const token = localStorage.getItem('bazaar-session-token')
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`)
     xhr.upload.onprogress = (event) => {
       if (event.lengthComputable) onProgress?.(Math.round((event.loaded / event.total) * 100))
     }
