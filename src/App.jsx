@@ -376,13 +376,14 @@ function AppContent() {
   }
 
   const openSocialComposer = () => {
-    setView('home')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
     if (!user) {
+      setView('home')
       setAuthOpen(true)
       toast('سجل الدخول لنشر منشور', 'info')
       return
     }
+    setView('compose')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
     window.dispatchEvent(new Event('focus-social-composer'))
   }
 
@@ -457,6 +458,10 @@ function AppContent() {
        <AuthModal open={authOpen} onClose={closeAuth} onSuccess={handleAuthSuccess} />
 
       <main>
+        {view === 'compose' && (
+          <SocialFeed user={user} composerOnly onBack={goHome} />
+        )}
+
         {view === 'home' && (
           <>
             <StoriesBar user={user} />
