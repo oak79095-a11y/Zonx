@@ -1,5 +1,4 @@
 import { Router } from 'express'
-import { getDb } from '../db.js'
 import { authenticate } from '../middleware/auth.js'
 import { makeId } from '../utils/auth.js'
 import { expireListings, expireSubscription } from '../services/expiration.js'
@@ -7,8 +6,8 @@ import { invalidateListingsCache } from '../routes/listings.js'
 
 const router = Router()
 
-function getSettings(db) {
-  const row = db.prepare("SELECT key,value FROM admin_settings").all()
+async function getSettings(db) {
+  const row = await db.many('SELECT key,value FROM admin_settings')
   const map = {}
   for (const r of row) map[r.key] = r.value
   return {
@@ -25,9 +24,9 @@ const PLANS = {
   business: { name: 'أعمال', price: null, days: 30, desc: 'محل تخصصي' },
 }
 
-router.get('/plans', (req, res) => {
-  const db = getDb()
-  const s = getSettings(db)
+router.get('/plans', async (req, res) => {
+  const db = req.app.locals.database
+  const s = await getSettings(db)
   res.json([
     {
       id: 'free',
@@ -75,69 +74,63 @@ router.get('/plans', (req, res) => {
   ])
 })
 
-router.post('/featured/:listingId', authenticate, (req, res) => {
-  const db = getDb()
-  const s = getSettings(db)
-  const listing = db.prepare('SELECT * FROM listings WHERE id = ? AND user_id = ?').get(req.params.listingId, req.user.id)
+router.post('/featured/:listingId', authenticate, async (req, res) => {
+  const db = req.app.locals.database
+  const s = await getSettings(db)
+  const listing = await db.one('SELECT * FROM listings WHERE id = ? AND user_id = ?', [req.params.listingId, req.user.id])
   if (!listing) return res.status(404).json({ error: 'الإعلان غير موجود' })
   if (listing.status !== 'active') return res.status(400).json({ error: 'الإعلان غير نشط' })
 
   const paymentId = makeId()
   const amount = s.featured_fee
-  db.prepare(
-    'INSERT INTO payments(id,user_id,listing_id,amount,method,status) VALUES(?,?,?,?,?,?)'
-  ).run(paymentId, req.user.id, req.params.listingId, amount, 'cod', 'pending')
+  await db.run('INSERT INTO payments(id,user_id,listing_id,amount,method,status) VALUES(?,?,?,?,?,?)', [paymentId, req.user.id, req.params.listingId, amount, 'cod', 'pending'])
 
   res.json({ paymentId, amount, method: 'cod', message: 'تم إنشاء طلب التمييز — الدفع عند الاستلام' })
 })
 
-router.post('/business', authenticate, (req, res) => {
-  const db = getDb()
-  const s = getSettings(db)
+router.post('/business', authenticate, async (req, res) => {
+  const db = req.app.locals.database
+  const s = await getSettings(db)
   const paymentId = makeId()
   const amount = s.business_monthly
-  db.prepare(
-    'INSERT INTO payments(id,user_id,amount,method,status) VALUES(?,?,?,?,?)'
-  ).run(paymentId, req.user.id, amount, 'cod', 'pending')
+  await db.run('INSERT INTO payments(id,user_id,amount,method,status) VALUES(?,?,?,?,?)', [paymentId, req.user.id, amount, 'cod', 'pending'])
 
   res.json({ paymentId, amount, method: 'cod', message: 'تم إنشاء طلب اشتراك الأعمال — الدفع عند الاستلام' })
 })
 
 // After admin approves a payment, call these to activate:
-export function activateFeatured(db, paymentId) {
-  const payment = db.prepare('SELECT * FROM payments WHERE id = ?').get(paymentId)
+export async function activateFeatured(db, paymentId) {
+  const payment = await db.one('SELECT * FROM payments WHERE id = ?', [paymentId])
   if (!payment || payment.status !== 'pending' || !payment.listing_id) return null
-  const listing = db.prepare('SELECT id FROM listings WHERE id = ? AND user_id = ?').get(payment.listing_id, payment.user_id)
+  const listing = await db.one('SELECT id FROM listings WHERE id = ? AND user_id = ?', [payment.listing_id, payment.user_id])
   if (!listing) return null
-  const s = getSettings(db)
+  const s = await getSettings(db)
   const until = new Date(Date.now() + s.featured_duration_days * 24 * 60 * 60 * 1000).toISOString()
-  db.prepare("UPDATE listings SET featured=1, featured_until=? WHERE id=?").run(until, payment.listing_id)
-  db.prepare("UPDATE payments SET status='approved' WHERE id=?").run(paymentId)
+  await db.run('UPDATE listings SET featured=?, featured_until=? WHERE id=?', [true, until, payment.listing_id])
+  await db.run("UPDATE payments SET status='approved' WHERE id=?", [paymentId])
   invalidateListingsCache()
   return { listing_id: payment.listing_id, featured_until: until }
 }
 
-export function activateBusiness(db, paymentId) {
-  const payment = db.prepare('SELECT * FROM payments WHERE id = ?').get(paymentId)
+export async function activateBusiness(db, paymentId) {
+  const payment = await db.one('SELECT * FROM payments WHERE id = ?', [paymentId])
   if (!payment || payment.status !== 'pending' || payment.listing_id) return null
-  const s = getSettings(db)
+  const s = await getSettings(db)
   const starts = new Date().toISOString()
   const ends = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
   const subId = makeId()
-  db.prepare(
-    'INSERT INTO subscriptions(id,user_id,plan,status,starts_at,ends_at) VALUES(?,?,?,?,?,?)'
-  ).run(subId, payment.user_id, 'business', 'active', starts, ends)
-  db.prepare("UPDATE payments SET status='approved', subscription_id=? WHERE id=?").run(subId, paymentId)
+  await db.run('INSERT INTO subscriptions(id,user_id,plan,status,starts_at,ends_at) VALUES(?,?,?,?,?,?)', [subId, payment.user_id, 'business', 'active', starts, ends])
+  await db.run("UPDATE payments SET status='approved', subscription_id=? WHERE id=?", [subId, paymentId])
   return { subscription_id: subId, ends_at: ends }
 }
 
-router.get('/me', authenticate, (req, res) => {
-  const db = getDb()
-  expireListings(db)
-  const subs = db.prepare('SELECT * FROM subscriptions WHERE user_id = ? ORDER BY created_at DESC').all(req.user.id)
-  for (const s of subs) expireSubscription(db, s.id)
-  const subs2 = db.prepare('SELECT * FROM subscriptions WHERE user_id = ? ORDER BY created_at DESC').all(req.user.id)
-  const payments = db.prepare('SELECT * FROM payments WHERE user_id = ? ORDER BY created_at DESC').all(req.user.id)
+router.get('/me', authenticate, async (req, res) => {
+  const db = req.app.locals.database
+  await expireListings(db)
+  const subs = await db.many('SELECT * FROM subscriptions WHERE user_id = ? ORDER BY created_at DESC', [req.user.id])
+  for (const s of subs) await expireSubscription(db, s.id)
+  const subs2 = await db.many('SELECT * FROM subscriptions WHERE user_id = ? ORDER BY created_at DESC', [req.user.id])
+  const payments = await db.many('SELECT * FROM payments WHERE user_id = ? ORDER BY created_at DESC', [req.user.id])
   res.json({ subscriptions: subs2, payments })
 })
 

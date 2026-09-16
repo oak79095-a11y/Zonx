@@ -1,5 +1,4 @@
 import { Router } from 'express'
-import { getDb } from '../db.js'
 import { authenticate } from '../middleware/auth.js'
 import { makeId } from '../utils/auth.js'
 import { saveFile, deleteFile, ALLOWED_TYPES, MAX_FILE_SIZE } from '../services/storage.js'
@@ -8,9 +7,9 @@ import { receiptUpload, uploadHandler } from '../middleware/upload.js'
 const router = Router()
 
 // Manual receipt upload for a pending payment
-router.post('/:paymentId/receipt', authenticate, uploadHandler(receiptUpload, (req, res) => {
-  const db = getDb()
-  const payment = db.prepare('SELECT * FROM payments WHERE id = ? AND user_id = ?').get(req.params.paymentId, req.user.id)
+router.post('/:paymentId/receipt', authenticate, uploadHandler(receiptUpload, async (req, res) => {
+  const db = req.app.locals.database
+  const payment = await db.one('SELECT * FROM payments WHERE id = ? AND user_id = ?', [req.params.paymentId, req.user.id])
   if (!payment) return res.status(404).json({ error: 'الدفعة غير موجودة' })
   if (payment.status !== 'pending') return res.status(400).json({ error: 'الدفعة تم معالجتها بالفعل' })
 
@@ -21,7 +20,7 @@ router.post('/:paymentId/receipt', authenticate, uploadHandler(receiptUpload, (r
 
   const rel = saveFile(file, 'receipts')
   try {
-    db.prepare("UPDATE payments SET receipt_path=?, notes=? WHERE id=?").run(rel, String(req.body?.notes || '').slice(0, 500) || null, req.params.paymentId)
+    await db.run('UPDATE payments SET receipt_path=?, notes=? WHERE id=?', [rel, String(req.body?.notes || '').slice(0, 500) || null, req.params.paymentId])
   } catch (error) {
     deleteFile(rel)
     throw error
@@ -30,9 +29,9 @@ router.post('/:paymentId/receipt', authenticate, uploadHandler(receiptUpload, (r
 }))
 
 // List my payments
-router.get('/me', authenticate, (req, res) => {
-  const db = getDb()
-  const rows = db.prepare('SELECT * FROM payments WHERE user_id = ? ORDER BY created_at DESC').all(req.user.id)
+router.get('/me', authenticate, async (req, res) => {
+  const db = req.app.locals.database
+  const rows = await db.many('SELECT * FROM payments WHERE user_id = ? ORDER BY created_at DESC', [req.user.id])
   res.json(rows)
 })
 

@@ -19,12 +19,13 @@ import notificationRoutes from './routes/notifications.js'
 import postRoutes from './routes/posts.js'
 import { initWs } from './ws.js'
 import { expireListings, startExpirationJob } from './services/expiration.js'
+import { flushViews } from './services/views.js'
 import { verifyToken } from './utils/auth.js'
 import { UPLOAD_DIR } from './services/storage.js'
 import { CLASSIFIEDS_ENABLED } from './config/features.js'
 import { mediaProviderName } from './services/media/index.js'
 import { createDatabaseAdapter } from './db/adapter.js'
-import { closePostgres, verifyPostgres } from './db/postgres.js'
+import { closePostgres, initPostgres, verifyPostgres } from './db/postgres.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 5199
@@ -74,14 +75,14 @@ const STATIC_OPTS = { maxAge: '365d', immutable: true, fallthrough: true }
 app.use('/uploads/listings', express.static(path.join(UPLOAD_DIR, 'listings'), STATIC_OPTS))
 app.use('/uploads/avatars', express.static(path.join(UPLOAD_DIR, 'avatars'), STATIC_OPTS))
 app.use('/uploads/stories', express.static(path.join(UPLOAD_DIR, 'stories'), STATIC_OPTS))
-app.use('/uploads/chat', (req, res, next) => {
+app.use('/uploads/chat', async (req, res, next) => {
   const token = req.cookies?.session || req.headers.authorization?.replace('Bearer ', '')
   if (!token) return res.status(401).end()
   try {
     const payload = verifyToken(token)
     const userId = payload.id
     const mediaPath = `/uploads/chat/${path.basename(req.path)}`
-    const allowed = getDb().prepare(`
+    const allowed = await req.app.locals.database.one(`
       SELECT 1
       FROM chat_uploads cu
       WHERE cu.path = ?
@@ -93,7 +94,7 @@ app.use('/uploads/chat', (req, res, next) => {
             WHERE m.media = ? AND (c.user1_id = ? OR c.user2_id = ?)
           )
         )
-    `).get(mediaPath, userId, mediaPath, userId, userId)
+    `, [mediaPath, userId, mediaPath, userId, userId])
     const admin = payload.role === 'admin'
     if (!allowed && !admin) return res.status(404).end()
     // Authenticated media: cacheable per-user only, never by shared proxies.
@@ -121,14 +122,15 @@ app.use('/api/posts', postRoutes)
 
 app.get('/health', async (_req, res) => {
   try {
-    db.prepare('SELECT 1 AS ok').get()
-    const totals = db.prepare(`
+    const database = app.locals.database
+    await database.one('SELECT 1 AS ok')
+    const totals = await database.one(`
       SELECT
         COUNT(*) AS total,
         SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) AS active
       FROM listings
-    `).get()
-    const users = db.prepare('SELECT COUNT(*) AS total FROM users').get()
+    `)
+    const users = await database.one('SELECT COUNT(*) AS total FROM users')
     const postgres = await verifyPostgres()
     res.json({
       ok: true,
@@ -145,7 +147,7 @@ app.get('/health', async (_req, res) => {
         stories: Number(process.env.STORY_RETENTION_DAYS ?? 0) > 0 ? '期限ية' : 'دائمة',
       },
       drivers: {
-        database: postgres.enabled ? 'postgres-configured-sqlite-active' : 'sqlite',
+         database: postgres.enabled ? 'postgres' : 'sqlite',
         classifieds: CLASSIFIEDS_ENABLED,
         media: mediaProviderName,
       },
@@ -181,16 +183,12 @@ app.use((err, _req, res, _next) => {
 
 const db = initDb()
 app.locals.database = createDatabaseAdapter(db)
-if (Number(process.env.LISTING_EXPIRATION_DAYS ?? 0) <= 0) {
+if (db && Number(process.env.LISTING_EXPIRATION_DAYS ?? 0) <= 0) {
   // Preserve active listings indefinitely when production retention is disabled.
   db.prepare("UPDATE listings SET expires_at = NULL WHERE status = 'active'").run()
 }
-expireListings(db)
-startExpirationJob()
-setInterval(() => expireListings(db), 5 * 60 * 1000).unref()
-
 const httpServer = http.createServer(app)
-const wss = initWs(httpServer)
+const wss = initWs(httpServer, app.locals.database)
 
 let shuttingDown = false
 async function shutdown(signal) {
@@ -199,13 +197,25 @@ async function shutdown(signal) {
   console.log(`Received ${signal}; shutting down`)
   wss.close()
   await new Promise((resolve) => httpServer.close(resolve))
-  db.close()
+  await flushViews(app.locals.database)
+  db?.close()
   await closePostgres()
 }
 
 process.once('SIGINT', () => { shutdown('SIGINT').finally(() => process.exit(0)) })
 process.once('SIGTERM', () => { shutdown('SIGTERM').finally(() => process.exit(0)) })
 
-httpServer.listen(PORT, () => {
-  console.log(`limon-bazaar server running on http://localhost:${PORT}`)
+async function start() {
+  await initPostgres()
+  await expireListings(app.locals.database)
+  startExpirationJob(app.locals.database)
+  setInterval(() => expireListings(app.locals.database).catch(() => {}), 5 * 60 * 1000).unref()
+  httpServer.listen(PORT, () => {
+    console.log(`limon-bazaar server running on http://localhost:${PORT}`)
+  })
+}
+
+start().catch((error) => {
+  console.error('Unable to start server:', error)
+  process.exitCode = 1
 })

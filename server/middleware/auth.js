@@ -14,10 +14,15 @@ export function authenticate(req, res, next) {
   }
 }
 
-export function requireAdmin(req, res, next) {
-  const user = req.user?.id && getDb().prepare('SELECT role FROM users WHERE id = ?').get(req.user.id)
-  if (user?.role !== 'admin') return res.status(403).json({ error: 'ممنوع' })
-  next()
+export async function requireAdmin(req, res, next) {
+  try {
+    const database = req.app.locals.database
+    const user = req.user?.id && await database.one('SELECT role FROM users WHERE id = ?', [req.user.id])
+    if (user?.role !== 'admin') return res.status(403).json({ error: 'ممنوع' })
+    next()
+  } catch (error) {
+    next(error)
+  }
 }
 
 export function optionalAuth(req, _res, next) {

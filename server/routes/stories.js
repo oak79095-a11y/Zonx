@@ -1,95 +1,14 @@
 import { Router } from 'express'
-import { getDb } from '../db.js'
 import { authenticate } from '../middleware/auth.js'
 import { makeId } from '../utils/auth.js'
 import { createNotification } from '../services/notifications.js'
 import { saveFile, deleteFile, ALLOWED_TYPES, MAX_FILE_SIZE } from '../services/storage.js'
 import { storyUpload, uploadHandler } from '../middleware/upload.js'
 
-const router = Router()
-
-// مدة بقاء الستوري 24 ساعة
-export const STORY_TTL_MS = 24 * 60 * 60 * 1000
-
-function cleanExpiredStories(db) {
-  const retentionDays = Number(process.env.STORY_RETENTION_DAYS ?? 0)
-  if (!Number.isFinite(retentionDays) || retentionDays <= 0) return
-  const expired = db.prepare("SELECT media FROM stories WHERE created_at < datetime('now', ?)").all(`-${retentionDays} days`)
-  for (const s of expired) deleteFile(s.media)
-  db.prepare("DELETE FROM stories WHERE created_at < datetime('now', ?)").run(`-${retentionDays} days`)
-}
-
-// عرض الستوريات - للمسجلين فقط
-router.get('/', authenticate, (req, res) => {
-  const db = getDb()
-  cleanExpiredStories(db)
-  const rows = db.prepare(`
-     SELECT s.*, u.name as user_name, u.avatar as user_avatar
-    FROM stories s
-    LEFT JOIN users u ON u.id = s.user_id
-    ORDER BY s.created_at DESC
-  `).all()
-  res.json(rows.map((r) => ({
-    id: r.id,
-    user_id: r.user_id,
-     user_name: r.user_name || 'مستخدم',
-    user_avatar: r.user_avatar || null,
-    media: r.media,
-    media_type: r.media_type,
-    caption: r.caption || null,
-    views: r.views || 0,
-    created_at: r.created_at,
-    mine: r.user_id === req.user.id,
-  })))
-})
-
-// نشر ستوري (صورة او فيديو) - للمسجلين فقط
-router.post('/', authenticate, uploadHandler(storyUpload, (req, res) => {
-  const db = getDb()
-  const file = req.file
-  if (!file) return res.status(400).json({ error: 'لا يوجد ملف' })
-  if (!ALLOWED_TYPES.has(file.mimetype)) return res.status(400).json({ error: 'نوع غير مدعوم' })
-  if (file.size > MAX_FILE_SIZE) return res.status(400).json({ error: 'الملف كبير جدا' })
-  const isVideo = file.mimetype.startsWith('video/')
-  const rel = saveFile(file, 'stories')
-  const id = makeId()
-  const caption = String(req.body?.caption || '').trim().slice(0, 120) || null
-  try {
-    db.prepare('INSERT INTO stories(id,user_id,media,media_type,caption) VALUES(?,?,?,?,?)').run(id, req.user.id, rel, isVideo ? 'video' : 'image', caption)
-  } catch (error) {
-    deleteFile(rel)
-    throw error
-  }
-  res.status(201).json({ id, media: rel, media_type: isVideo ? 'video' : 'image', caption })
-}))
-
-router.post('/:id/view', authenticate, (req, res) => {
-  const db = getDb()
-  const story = db.prepare('SELECT id, user_id FROM stories WHERE id = ?').get(req.params.id)
-  if (!story) return res.status(404).json({ error: 'غير موجود' })
-  const result = db.prepare('INSERT OR IGNORE INTO story_views(story_id, viewer_id) VALUES(?,?)').run(story.id, req.user.id)
-  if (result.changes && story.user_id !== req.user.id) {
-    const actor = db.prepare('SELECT name FROM users WHERE id = ?').get(req.user.id)
-    createNotification(db, {
-      recipientId: story.user_id,
-      actorId: req.user.id,
-      type: 'story_view',
-      entityId: story.id,
-      message: `${actor?.name || 'مستخدم'} شاهد قصتك`,
-    })
-  }
-  res.json({ ok: true })
-})
-
-// حذف ستوري (صاحبه فقط)
-router.delete('/:id', authenticate, (req, res) => {
-  const db = getDb()
-  const story = db.prepare('SELECT * FROM stories WHERE id = ?').get(req.params.id)
-  if (!story) return res.status(404).json({ error: 'غير موجود' })
-  if (story.user_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ error: 'ممنوع' })
-  deleteFile(story.media)
-  db.prepare('DELETE FROM stories WHERE id = ?').run(req.params.id)
-  res.json({ ok: true })
-})
-
+const router = Router(); export const STORY_TTL_MS = 24 * 60 * 60 * 1000
+async function cleanExpiredStories(db) { const days = Number(process.env.STORY_RETENTION_DAYS ?? 0); if (!Number.isFinite(days) || days <= 0) return; const cutoff = Date.now() - days * 86400000; const rows = await db.many('SELECT id, media, created_at FROM stories'); for (const row of rows) if (Date.parse(row.created_at) < cutoff) { deleteFile(row.media); await db.run('DELETE FROM stories WHERE id = ?', [row.id]) } }
+router.get('/', authenticate, async (req, res, next) => { try { const db = req.app.locals.database; await cleanExpiredStories(db); const rows = await db.many('SELECT s.*, u.name AS user_name, u.avatar AS user_avatar FROM stories s LEFT JOIN users u ON u.id = s.user_id ORDER BY s.created_at DESC'); res.json(rows.map((r) => ({ id: r.id, user_id: r.user_id, user_name: r.user_name || 'مستخدم', user_avatar: r.user_avatar || null, media: r.media, media_type: r.media_type, caption: r.caption || null, views: Number(r.views || 0), created_at: r.created_at, mine: r.user_id === req.user.id }))) } catch (error) { next(error) } })
+router.post('/', authenticate, uploadHandler(storyUpload, async (req, res) => { const db = req.app.locals.database; const file = req.file; if (!file) return res.status(400).json({ error: 'لا يوجد ملف' }); if (!ALLOWED_TYPES.has(file.mimetype)) return res.status(400).json({ error: 'نوع غير مدعوم' }); if (file.size > MAX_FILE_SIZE) return res.status(400).json({ error: 'الملف كبير جدا' }); const isVideo = file.mimetype.startsWith('video/'); const rel = saveFile(file, 'stories'); const id = makeId(); const caption = String(req.body?.caption || '').trim().slice(0, 120) || null; try { await db.run('INSERT INTO stories(id,user_id,media,media_type,caption) VALUES(?,?,?,?,?)', [id, req.user.id, rel, isVideo ? 'video' : 'image', caption]) } catch (error) { deleteFile(rel); throw error } res.status(201).json({ id, media: rel, media_type: isVideo ? 'video' : 'image', caption }) }))
+router.post('/:id/view', authenticate, async (req, res, next) => { try { const db = req.app.locals.database; const story = await db.one('SELECT id, user_id FROM stories WHERE id = ?', [req.params.id]); if (!story) return res.status(404).json({ error: 'غير موجود' }); const result = await db.run('INSERT INTO story_views(story_id, viewer_id) VALUES(?,?) ON CONFLICT (story_id,viewer_id) DO NOTHING', [story.id, req.user.id]); if (result.rowCount && story.user_id !== req.user.id) { const actor = await db.one('SELECT name FROM users WHERE id = ?', [req.user.id]); await createNotification(db, { recipientId: story.user_id, actorId: req.user.id, type: 'story_view', entityId: story.id, message: `${actor?.name || 'مستخدم'} شاهد قصتك` }) } res.json({ ok: true }) } catch (error) { next(error) } })
+router.delete('/:id', authenticate, async (req, res, next) => { try { const db = req.app.locals.database; const story = await db.one('SELECT * FROM stories WHERE id = ?', [req.params.id]); if (!story) return res.status(404).json({ error: 'غير موجود' }); if (story.user_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ error: 'ممنوع' }); deleteFile(story.media); await db.run('DELETE FROM stories WHERE id = ?', [req.params.id]); res.json({ ok: true }) } catch (error) { next(error) } })
 export default router

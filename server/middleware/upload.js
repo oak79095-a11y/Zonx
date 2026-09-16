@@ -21,7 +21,7 @@ export function uploadHandler(middleware, route) {
       if (err) {
         return res.status(400).json({ error: err.message || 'Upload error' })
       }
-      route(req, res, next)
+      Promise.resolve(route(req, res, next)).catch(next)
     })
   }
 }

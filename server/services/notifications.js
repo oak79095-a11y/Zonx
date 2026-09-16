@@ -1,36 +1,22 @@
 import { makeId } from '../utils/auth.js'
 import { pushToUser } from './push.js'
 
-export function createNotification(db, { recipientId, actorId = null, type, entityId = null, message }) {
+export async function createNotification(db, { recipientId, actorId = null, type, entityId = null, message }) {
   if (!recipientId || recipientId === actorId || !type || !message) return null
-  const result = db.prepare(`
-    INSERT INTO notifications(id, recipient_id, actor_id, type, entity_id, message)
-    VALUES(?,?,?,?,?,?)
-  `).run(makeId(), recipientId, actorId, type, entityId, message)
-  if (result.changes) {
-    // Push instantly over WS so clients stop polling the unread badge.
-    const unread = unreadNotifications(db, recipientId)
-    pushToUser(recipientId, { type: 'notification', notification_type: type, entity_id: entityId, unread })
-  }
-  return result.changes ? result : null
+  const result = await db.run('INSERT INTO notifications(id, recipient_id, actor_id, type, entity_id, message) VALUES(?,?,?,?,?,?)', [makeId(), recipientId, actorId, type, entityId, message])
+  if (result.rowCount) pushToUser(recipientId, { type: 'notification', notification_type: type, entity_id: entityId, unread: await unreadNotifications(db, recipientId) })
+  return result.rowCount ? result : null
 }
 
-export function listNotifications(db, userId, limit = 50) {
-  return db.prepare(`
-    SELECT n.id, n.type, n.entity_id, n.message, n.read_at, n.created_at,
-      a.id AS actor_id, a.name AS actor_name, a.avatar AS actor_avatar
-    FROM notifications n
-    LEFT JOIN users a ON a.id = n.actor_id
-    WHERE n.recipient_id = ?
-    ORDER BY n.created_at DESC
-    LIMIT ?
-  `).all(userId, Math.min(Math.max(Number(limit) || 50, 1), 100))
+export async function listNotifications(db, userId, limit = 50) {
+  return db.many(`SELECT n.id, n.type, n.entity_id, n.message, n.read_at, n.created_at, a.id AS actor_id, a.name AS actor_name, a.avatar AS actor_avatar FROM notifications n LEFT JOIN users a ON a.id = n.actor_id WHERE n.recipient_id = ? ORDER BY n.created_at DESC LIMIT ?`, [userId, Math.min(Math.max(Number(limit) || 50, 1), 100)])
 }
 
-export function unreadNotifications(db, userId) {
-  return db.prepare('SELECT COUNT(*) AS count FROM notifications WHERE recipient_id = ? AND read_at IS NULL').get(userId).count
+export async function unreadNotifications(db, userId) {
+  const row = await db.one('SELECT COUNT(*) AS count FROM notifications WHERE recipient_id = ? AND read_at IS NULL', [userId])
+  return Number(row?.count || 0)
 }
 
-export function markNotificationsRead(db, userId) {
-  return db.prepare('UPDATE notifications SET read_at = datetime(\'now\') WHERE recipient_id = ? AND read_at IS NULL').run(userId)
+export async function markNotificationsRead(db, userId) {
+  return db.run("UPDATE notifications SET read_at = CURRENT_TIMESTAMP WHERE recipient_id = ? AND read_at IS NULL", [userId])
 }
