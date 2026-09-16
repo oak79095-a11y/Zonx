@@ -2650,6 +2650,95 @@ body { padding-bottom: calc(86px + env(safe-area-inset-bottom)); }
   .messages-screen .msg-input { padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); }
 }
 
+/* ============ واجهة اجتماعية هادئة ============ */
+body { background: #f5f5f5; }
+body::before { opacity: .025; }
+.header {
+  height: 64px;
+  background: rgba(255, 255, 255, .96);
+  border-bottom-color: #e9e9e9;
+}
+.header-inner { max-width: 980px; padding-inline: 18px; }
+.brand { gap: 9px; }
+.zonx-icon { width: 38px; height: 38px; border-radius: 12px; box-shadow: 0 5px 14px rgba(220, 38, 38, .2); }
+.zonx-wordmark { font-size: 22px; letter-spacing: 4px; }
+.menu-btn, .hd-message, .hd-heart {
+  width: 40px; height: 40px; border-radius: 12px; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.06);
+}
+.social-feed-section { width: min(640px, calc(100% - 28px)); margin: 30px auto 110px; }
+.social-feed-head { margin-bottom: 18px; padding-inline: 3px; }
+.social-kicker { font-size: 12px; letter-spacing: .02em; }
+.social-feed-head h2 { font-size: 25px; letter-spacing: -.3px; }
+.social-live-dot { padding: 6px 11px; }
+.social-composer, .social-post {
+  border: 1px solid #e8e8e8;
+  border-radius: 14px;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, .045);
+}
+.social-composer { padding: 16px; margin-bottom: 16px; }
+.social-composer-row { gap: 12px; }
+.social-mini-avatar, .social-author > span { width: 40px; height: 40px; }
+.social-composer textarea { min-height: 58px; font-size: 14px; }
+.social-composer-actions { margin-top: 12px; padding-top: 12px; }
+.social-file-button { color: #777; font-size: 12px; }
+.social-composer-actions button { padding: 9px 20px; font-size: 13px; }
+.social-post-list { gap: 16px; }
+.social-author { padding: 15px 16px 10px; gap: 11px; }
+.social-author img { width: 40px; height: 40px; }
+.social-author b { font-size: 13px; }
+.social-author small { font-size: 11px; }
+.social-post-content { margin: 5px 16px 14px; font-size: 14px; line-height: 1.85; }
+.social-post-media { max-height: 680px; object-fit: cover; }
+.social-post-actions { padding: 9px 12px; gap: 5px; }
+.social-post-actions button { padding: 8px 11px; font-size: 12px; }
+.bottom-bar {
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  padding: 7px 12px;
+  gap: 5px;
+  border: 1px solid rgba(220, 220, 220, .9);
+  background: rgba(255, 255, 255, .97);
+  box-shadow: 0 8px 30px rgba(25, 25, 25, .14);
+}
+.bb-item { width: 46px; height: 46px; color: #666; }
+.bb-item:hover { background: #f7f7f7; color: var(--red); transform: none; }
+.bb-item.active { color: var(--red); }
+.bb-add { width: 52px; height: 52px; margin-inline: 8px; box-shadow: 0 7px 18px rgba(220, 38, 38, .28); }
+.bb-add:hover { transform: translateY(-2px) scale(1.03); }
+.seller-profile-section { padding-top: 20px; padding-bottom: 110px; }
+.seller-card { max-width: 760px; margin: 16px auto; border-radius: 16px; box-shadow: 0 2px 14px rgba(15,23,42,.06); }
+.seller-cover { height: 132px; }
+.seller-head { padding-inline: 22px; }
+.seller-head .seller-avatar { width: 88px; height: 88px; }
+.seller-head .seller-id { padding-top: 55px; }
+.seller-head .seller-name { font-size: 20px; }
+.seller-follow-row { padding: 14px 22px 0; }
+.follow-btn { max-width: 360px; border-radius: 10px; padding: 10px 18px; }
+.messages-screen { padding-top: 20px; }
+.messages-screen .msg-page { max-width: 1080px; margin: 0 auto; height: calc(100vh - 110px); }
+.messages-screen .msg-list, .messages-screen .msg-chat { border-radius: 16px; box-shadow: 0 2px 14px rgba(15,23,42,.06); }
+.messages-screen .msg-list-head { padding: 18px 20px 14px; }
+.messages-screen .msg-item { padding: 12px; border-radius: 11px; }
+.messages-screen .msg-item.on { background: #fff1f1; }
+.messages-screen .msg-chat-head { min-height: 66px; }
+.messages-screen .msg-input { border-top-color: #ededed; }
+
+@media (max-width: 560px) {
+  .header { height: 58px; }
+  .header-inner { padding-inline: 12px; }
+  .zonx-icon { width: 34px; height: 34px; }
+  .zonx-wordmark { font-size: 19px; letter-spacing: 3px; }
+  .menu-btn, .hd-message, .hd-heart { width: 38px; height: 38px; }
+  .social-feed-section { width: calc(100% - 20px); margin-top: 20px; }
+  .social-feed-head h2 { font-size: 21px; }
+  .social-composer, .social-post { border-radius: 12px; }
+  .social-post-media { max-height: 520px; }
+  .bottom-bar { max-width: calc(100vw - 18px); gap: 1px; padding-inline: 7px; }
+  .bb-item { width: 42px; height: 42px; }
+  .bb-add { width: 48px; height: 48px; margin-inline: 5px; }
+  .seller-head { padding-inline: 16px; }
+  .seller-follow-row { padding-inline: 16px; }
+}
+
 /* لمسة إنستغرام هادئة: Feed مركزي وبطاقات خفيفة دون تغيير الوظائف */
 @media (min-width: 861px) {
   .header-inner, .container { max-width: 975px; }
