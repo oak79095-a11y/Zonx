@@ -241,9 +241,12 @@ export default function StoriesBar({ user }) {
 function formatStoryTime(iso) {
   if (!iso) return ''
   const d = new Date(iso.includes('T') ? iso : iso.replace(' ', 'T') + 'Z')
-  const mins = Math.max(0, Math.round((Date.now() - d.getTime()) / 60000))
-  if (mins < 1) return 'الآن'
-  if (mins < 60) return `منذ ${mins} د`
+  const diffSec = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000))
+  if (diffSec < 60) return 'منذ لحظات'
+  const mins = Math.floor(diffSec / 60)
+  if (mins < 60) return `منذ ${mins} س`
   const h = Math.floor(mins / 60)
-  return `منذ ${h} سا`
+  if (h < 24) return `منذ ${h} س`
+  const days = Math.floor(h / 24)
+  return `منذ ${days} ي`
 }
