@@ -3,8 +3,7 @@ import { categories, cities } from '../data/catalog.js'
 import useOverlay from '../hooks/useOverlay.js'
 import { apiFetch } from '../config.js'
 
-const MAX_FILES = 8
-const VIDEO_RE = /\.(mp4|webm|mov|m4v)$/i
+const MAX_FILES = 30
 
 export default function PostAdModal({ open, onClose, onCreate }) {
   const [title, setTitle] = useState('')
@@ -22,19 +21,7 @@ export default function PostAdModal({ open, onClose, onCreate }) {
 
   if (!open) return null
 
-  const checkVideoDuration = (f) => new Promise((resolve) => {
-    const url = URL.createObjectURL(f)
-    const video = document.createElement('video')
-    video.preload = 'metadata'
-    video.src = url
-    video.onloadedmetadata = () => {
-      URL.revokeObjectURL(url)
-      resolve(video.duration)
-    }
-    video.onerror = () => { URL.revokeObjectURL(url); resolve(-1) }
-  })
-
-  const handleFiles = async (e) => {
+  const handleFiles = (e) => {
     const picked = Array.from(e.target.files || [])
     e.target.value = ''
     setError('')
@@ -44,22 +31,12 @@ export default function PostAdModal({ open, onClose, onCreate }) {
     if (room <= 0) { setError(`اقصى ${MAX_FILES} ملفات`); return }
     if (picked.length > room) setError(`تم قبول اول ${room} ملفات فقط (الحد ${MAX_FILES})`)
 
-    const hasVideo = media.some(m => m.kind === 'video')
     const accepted = []
     for (const f of picked.slice(0, room)) {
       const isVideo = f.type.startsWith('video/')
       const isImage = f.type.startsWith('image/')
       if (!isVideo && !isImage) { setError('يسمح فقط بالصور والفيديو'); continue }
-      if (f.size > 15 * 1024 * 1024) { setError('احدى الملفات كبيرة جدا - الحد 15MB'); continue }
-      if (isVideo) {
-        if (hasVideo || accepted.some(m => m.kind === 'video')) { setError('فيديو واحد فقط في الاعلان'); continue }
-        const dur = await checkVideoDuration(f)
-        if (dur === -1) { setError('تعذر قراءة الفيديو'); continue }
-        if (dur > 30.2) { setError(`الفيديو يجب ان يكون 30 ثانية كحد اقصى (المدة: ${Math.round(dur)}ث)`); continue }
-        accepted.push({ file: f, url: URL.createObjectURL(f), kind: 'video' })
-      } else {
-        accepted.push({ file: f, url: URL.createObjectURL(f), kind: 'image' })
-      }
+      accepted.push({ file: f, url: URL.createObjectURL(f), kind: isVideo ? 'video' : 'image' })
     }
     if (accepted.length) setMedia(prev => [...prev, ...accepted])
   }
@@ -209,7 +186,7 @@ export default function PostAdModal({ open, onClose, onCreate }) {
               <span className="pa-upload-icon">🖼️</span>
               <span className="pa-upload-text">اضف صورا او فيديو</span>
               <span className="pa-counter">{media.length} / {MAX_FILES}</span>
-              <span className="pa-upload-hint">عدة صور مع فيديو واحد (حتى 30ث) - الحد {MAX_FILES} ملفات</span>
+              <span className="pa-upload-hint">صور وفيديو بدون قيود على الحجم او المدة - حتى {MAX_FILES} ملف</span>
               <input type="file" accept="image/*,video/*" multiple onChange={handleFiles} disabled={media.length >= MAX_FILES} />
             </label>
             {media.length > 0 && (

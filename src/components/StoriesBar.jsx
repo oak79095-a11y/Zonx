@@ -123,24 +123,12 @@ export default function StoriesBar({ user }) {
       for (const f of files) {
         const isVideo = f.type.startsWith('video/')
         if (!f.type.startsWith('image/') && !isVideo) { skipped++; continue }
-        if (f.size > 15 * 1024 * 1024) { skipped++; continue }
-        if (isVideo) {
-          const ok = await new Promise((resolve) => {
-            const url = URL.createObjectURL(f)
-            const v = document.createElement('video')
-            v.preload = 'metadata'
-            v.src = url
-            v.onloadedmetadata = () => { URL.revokeObjectURL(url); resolve(v.duration <= 30.2) }
-            v.onerror = () => resolve(false)
-          })
-          if (!ok) { skipped++; continue }
-        }
         const fd = new FormData()
         fd.append('story', f)
         const r = await apiFetch('/api/stories', { method: 'POST', body: fd, credentials: 'include' })
         if (!r.ok) skipped++
       }
-      if (skipped) setError(`تم تجاهل ${skipped} ملف (نوع غير مدعوم او حجم كبير - الحد 15MB والفيديو 30 ثانية)`)
+      if (skipped) setError(`تم تجاهل ${skipped} ملف (صور وفيديو فقط)`)
       if (files.length > skipped) toast('تم نشر الستوري ✓', 'success')
       load()
     } catch {

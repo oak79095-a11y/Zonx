@@ -112,9 +112,12 @@ export default function AuthModal({ open, onClose, onSuccess }) {
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e=>e.stopPropagation()}>
+      <div className="modal auth-modal" onClick={e=>e.stopPropagation()}>
         <div className="modal-head">
-          <h3>{mode === 'login' ? 'تسجيل الدخول' : 'انشاء حساب'}</h3>
+          <div className="auth-modal-heading">
+            <span className="auth-modal-mark" aria-hidden="true"><span>✕</span></span>
+            <h3>{mode === 'login' ? 'تسجيل الدخول' : 'انشاء حساب'}</h3>
+          </div>
           <button type="button" className="modal-close" onClick={onClose} aria-label="اغلاق">✕</button>
         </div>
         <div className="red-line small" style={{margin:'0 16px 12px'}}></div>

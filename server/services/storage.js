@@ -12,45 +12,9 @@ export const UPLOAD_DIR = process.env.UPLOAD_DIR || (
 
 fs.mkdirSync(UPLOAD_DIR, { recursive: true })
 
-export const ALLOWED_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-  'video/mp4',
-  'video/webm',
-  'video/quicktime',
-])
-
-export const CHAT_ALLOWED_TYPES = new Set([
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-  'video/mp4',
-  'video/webm',
-  'video/quicktime',
-  'audio/mpeg',
-  'audio/ogg',
-  'audio/wav',
-  'audio/webm',
-  'application/pdf',
-  'text/plain',
-  'application/zip',
-  'application/x-rar-compressed',
-  'application/vnd.rar',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/vnd.ms-powerpoint',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  'application/vnd.android.package-archive',
-])
-
-export const MAX_FILES = 8
-export const MAX_FILE_SIZE = 8 * 1024 * 1024
-export const MAX_VIDEO_DURATION_SEC = 30
+// كل انواع الملفات مقبولة — لا قيود على نوع الوسائط
+export const MAX_FILES = 30
+export const MAX_FILE_SIZE = 1024 * 1024 * 1024 // 1GB
 
 const EXTENSIONS = {
   'image/jpeg': '.jpg',
@@ -86,7 +50,8 @@ export function makeUploadDir(sub) {
 
 export function saveFile(file, sub = 'listings') {
   const dir = makeUploadDir(sub)
-  const ext = EXTENSIONS[file.mimetype] || (file.mimetype.startsWith('video') ? '.mp4' : '.bin')
+  const originalExt = path.extname(String(file.originalname || '')).toLowerCase()
+  const ext = EXTENSIONS[file.mimetype] || (/^\.[a-z0-9]{1,10}$/.test(originalExt) ? originalExt : '')
   const filename = `${v4()}${ext}`
   const dest = path.join(dir, filename)
   fs.writeFileSync(dest, file.buffer)

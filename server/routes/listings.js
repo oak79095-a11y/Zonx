@@ -2,7 +2,7 @@
 import { authenticate, optionalAuth } from '../middleware/auth.js'
 import { rateLimit } from '../middleware/rateLimit.js'
 import { makeId } from '../utils/auth.js'
-import { saveFile, deleteFile, MAX_FILES, ALLOWED_TYPES, MAX_FILE_SIZE } from '../services/storage.js'
+import { saveFile, deleteFile, MAX_FILES } from '../services/storage.js'
 import { listingUpload, singleUpload, uploadHandler } from '../middleware/upload.js'
 import { createNotification } from '../services/notifications.js'
 import { cacheGet, cacheSet, cacheInvalidate } from '../services/cache.js'
@@ -164,12 +164,10 @@ router.post('/:id/comments', optionalAuth, rateLimit({ windowMs: 60 * 1000, max:
   res.status(201).json({ id, listing_id: req.params.id, user_id: userId, name: name.slice(0, 40), text, created_at: new Date().toISOString() })
 })
 
-// رفع عام للصور والفيديو (30ث يتحقق في الواجهة + هنا حجم)
+// رفع عام للوسائط — كل الانواع مقبولة
 router.post('/upload', authenticate, rateLimit({ windowMs: 60 * 1000, max: 20 }), uploadHandler(singleUpload, (req, res) => {
   const file = req.file
   if (!file) return res.status(400).json({ error: 'لا يوجد ملف' })
-  if (!ALLOWED_TYPES.has(file.mimetype)) return res.status(400).json({ error: 'نوع غير مدعوم' })
-  if (file.size > MAX_FILE_SIZE) return res.status(400).json({ error: 'الملف كبير جدا' })
   const rel = saveFile(file, 'listings')
   res.json({ url: rel, path: rel, mimetype: file.mimetype })
 }))
@@ -180,14 +178,12 @@ router.post('/:id/images', authenticate, rateLimit({ windowMs: 60 * 1000, max: 1
   if (!listing) return res.status(404).json({ error: 'الاعلان غير موجود' })
   const files = req.files || []
   const existingCount = (await db.one('SELECT COUNT(*) AS c FROM listing_images WHERE listing_id = ?', [req.params.id])).c
-  if (existingCount + files.length > MAX_FILES) return res.status(400).json({ error: 'اقصى 8 ملفات' })
+  if (existingCount + files.length > MAX_FILES) return res.status(400).json({ error: `اقصى ${MAX_FILES} ملفات` })
   const saved = []
   try {
     let order = await db.one('SELECT COALESCE(MAX(sort_order),0) as m FROM listing_images WHERE listing_id = ?', [req.params.id])
     let next = (order?.m ?? 0) + 1
     await db.transaction(async (tx) => { for (const f of files) {
-      if (!ALLOWED_TYPES.has(f.mimetype)) continue
-      if (f.size > MAX_FILE_SIZE) continue
       const rel = saveFile(f, 'listings')
       const imgId = makeId()
       await tx.run('INSERT INTO listing_images(id,listing_id,path,sort_order) VALUES(?,?,?,?)', [imgId, req.params.id, rel, next++])
@@ -259,7 +255,7 @@ router.delete('/:id', authenticate, async (req, res) => {
 function mapListing(row) {
   if (!row) return null
   const images = (row.images || '').split('|').filter(Boolean)
-   return { id: row.id, user_id: row.user_id, title: row.title, description: row.description, price: row.price, category_id: row.category_id, city_id: row.city_id, status: row.status, phone: row.phone || null, seller_name: row.seller_name || 'بائع', seller_avatar: row.seller_avatar || null, seller_verified: Boolean(row.seller_verified), likes: row.likes || 0, featured: Boolean(row.featured), featured_until: row.featured_until, expires_at: row.expires_at, views: row.views, created_at: row.created_at, images: images.slice(0, 8) }
+   return { id: row.id, user_id: row.user_id, title: row.title, description: row.description, price: row.price, category_id: row.category_id, city_id: row.city_id, status: row.status, phone: row.phone || null, seller_name: row.seller_name || 'بائع', seller_avatar: row.seller_avatar || null, seller_verified: Boolean(row.seller_verified), likes: row.likes || 0, featured: Boolean(row.featured), featured_until: row.featured_until, expires_at: row.expires_at, views: row.views, created_at: row.created_at, images: images.slice(0, MAX_FILES) }
 }
 
 export default router

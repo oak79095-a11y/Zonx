@@ -5,8 +5,7 @@ import {
   getOrCreateConversation, listConversations, getHistory,
   insertMessage, markRead, unreadTotal,
 } from '../services/chat.js'
-import { saveFile, deleteFile } from '../services/storage.js'
-import { CHAT_ALLOWED_TYPES, isStoredUploadPath } from '../services/storage.js'
+import { saveFile, deleteFile, isStoredUploadPath, MAX_FILE_SIZE } from '../services/storage.js'
 import { makeId } from '../utils/auth.js'
 import { sendToUser } from '../ws.js'
 import { rateLimit } from '../middleware/rateLimit.js'
@@ -16,10 +15,7 @@ const router = Router()
 
 const chatUpload = multer({
   storage: multer.memoryStorage(),
-  fileFilter: (_req, file, cb) => {
-    cb(null, CHAT_ALLOWED_TYPES.has(file.mimetype))
-  },
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: MAX_FILE_SIZE },
 })
 
 function mediaKindOf(mime) {
@@ -32,14 +28,10 @@ function mediaKindOf(mime) {
 // رفع وسائط الدردشة (صورة/فيديو/صوت/ملف)
 router.post('/upload', authenticate, rateLimit({ windowMs: 60 * 1000, max: 20 }), async (req, res, next) => {
   chatUpload.single('file')(req, res, async (err) => {
-    if (err) return res.status(400).json({ error: err.message || 'نوع الملف غير مدعوم أو الملف كبير جدا' })
+    if (err) return res.status(400).json({ error: err.message || 'تعذر رفع الملف' })
     const file = req.file
     if (!file) return res.status(400).json({ error: 'لا يوجد ملف' })
-    if (!CHAT_ALLOWED_TYPES.has(file.mimetype)) return res.status(400).json({ error: 'نوع الملف غير مدعوم' })
     const kind = mediaKindOf(file.mimetype)
-    if (kind === 'file' && !/\.(pdf|doc|docx|xls|xlsx|ppt|pptx|txt|zip|rar|apk)$/i.test(file.originalname || '')) {
-      return res.status(400).json({ error: 'نوع الملف غير مدعوم' })
-    }
     const path = saveFile(file, 'chat')
     try {
       await req.app.locals.database.run('INSERT INTO chat_uploads(id,user_id,path,media_type) VALUES(?,?,?,?)', [makeId(), req.user.id, path, kind])

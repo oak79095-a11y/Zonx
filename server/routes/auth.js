@@ -88,7 +88,6 @@ router.get('/me', authenticate, async (req, res, next) => {
 router.post('/avatar', authenticate, uploadHandler(singleUpload, async (req, res) => {
   const file = req.file
   if (!file || !file.mimetype.startsWith('image/')) return res.status(400).json({ error: 'صورة غير صحيحة' })
-  if (file.size > 5 * 1024 * 1024) return res.status(400).json({ error: 'الصورة كبيرة جدا (الحد 5MB)' })
   const rel = saveFile(file, 'avatars')
   await req.app.locals.database.run('UPDATE users SET avatar = ? WHERE id = ?', [rel, req.user.id])
   res.json({ avatar: rel })

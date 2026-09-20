@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { authenticate } from '../middleware/auth.js'
 import { makeId } from '../utils/auth.js'
-import { saveFile, deleteFile, ALLOWED_TYPES, MAX_FILE_SIZE } from '../services/storage.js'
+import { saveFile, deleteFile } from '../services/storage.js'
 import { receiptUpload, uploadHandler } from '../middleware/upload.js'
 
 const router = Router()
@@ -15,8 +15,7 @@ router.post('/:paymentId/receipt', authenticate, uploadHandler(receiptUpload, as
 
   const file = req.file
   if (!file) return res.status(400).json({ error: 'يرجى رفع صورة الإيصال' })
-   if (!file.mimetype.startsWith('image/') || !ALLOWED_TYPES.has(file.mimetype)) return res.status(400).json({ error: 'يرجى رفع صورة إيصال' })
-  if (file.size > MAX_FILE_SIZE) return res.status(400).json({ error: 'الملف كبير جداً' })
+  if (!file.mimetype.startsWith('image/')) return res.status(400).json({ error: 'يرجى رفع صورة إيصال' })
 
   const rel = saveFile(file, 'receipts')
   try {

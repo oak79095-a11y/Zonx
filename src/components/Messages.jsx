@@ -316,10 +316,6 @@ export default function Messages({ user, initialPeer, onBack, onRequireAuth }) {
 
   const uploadAndSend = async (file, kindOverride = null) => {
     if (!active) return
-    if (file.size > 25 * 1024 * 1024) {
-      toast('الملف كبير جداً (الحد 25MB)', 'error')
-      return
-    }
     setSending(true)
     const tmpId = 'tmp-' + Math.random().toString(36).slice(2)
     const localUrl = URL.createObjectURL(file)

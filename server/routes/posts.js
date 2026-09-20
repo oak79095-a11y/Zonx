@@ -1,7 +1,6 @@
 import { Router } from 'express'
 import { authenticate, optionalAuth } from '../middleware/auth.js'
 import { singleUpload, uploadHandler } from '../middleware/upload.js'
-import { ALLOWED_TYPES } from '../services/storage.js'
 import { uploadMedia, destroyMedia } from '../services/media/index.js'
 import { createNotification } from '../services/notifications.js'
 import { makeId } from '../utils/auth.js'
@@ -29,7 +28,6 @@ router.post('/', authenticate, rateLimit({ windowMs: 60000, max: 20 }), uploadHa
   const content = String(req.body?.content || '').trim(); const file = req.file
   if (!content && !file) return res.status(400).json({ error: 'اكتب شيئاً أو أرفق وسائط' })
   if (content.length > 5000) return res.status(400).json({ error: 'المنشور طويل جداً' })
-  if (file && !ALLOWED_TYPES.has(file.mimetype)) return res.status(400).json({ error: 'نوع الوسائط غير مدعوم' })
   const asset = file ? await uploadMedia(file, 'posts') : null; const id = makeId()
   try { await db.run('INSERT INTO posts(id,user_id,content,media,media_public_id,media_provider,media_type) VALUES(?,?,?,?,?,?,?)', [id, req.user.id, content, asset?.url || null, asset?.publicId || null, asset?.provider || null, file ? mediaTypeOf(file.mimetype) : 'text']) } catch (error) { if (asset) await destroyMedia(asset); throw error }
     const row = await db.one(`${postSelect} AND p.id = ?`, [req.user.id, req.user.id, id])

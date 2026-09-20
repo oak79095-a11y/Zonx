@@ -10,6 +10,7 @@
         "dev": "vite",
         "build": "vite build",
         "db:migrate": "node scripts/migrate-sqlite-to-postgres.mjs",
+        "db:test": "node scripts/test-postgres.mjs",
         "postbuild": "node scripts/copy-404.mjs",
         "preview": "vite preview"
     },
