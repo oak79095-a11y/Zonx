@@ -43,7 +43,7 @@ const TABS = [
   { id: 'about', label: 'حول', icon: 'ℹ️' },
 ]
 
-export default function Sidebar({ open, onClose, city, onCityChange, user, onSetUser, onLogout, onRequireAuth }) {
+export default function Sidebar({ open, onClose, city, onCityChange, user, onSetUser, onLogout, onRequireAuth, onAbout }) {
   const [tab, setTab] = useState('account')
   const [dark, setDark] = useState(() => document.documentElement.getAttribute('data-theme') === 'dark')
   const [accent, setAccent] = useState(() => readPref('bazaar-accent', 'red'))
@@ -143,7 +143,7 @@ export default function Sidebar({ open, onClose, city, onCityChange, user, onSet
               role="tab"
               aria-selected={tab === t.id}
               className={'set-tab' + (tab === t.id ? ' active' : '')}
-              onClick={() => setTab(t.id)}
+              onClick={() => t.id === 'about' && onAbout ? onAbout() : setTab(t.id)}
             >
               <span aria-hidden="true">{t.icon}</span> {t.label}
             </button>

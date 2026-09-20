@@ -4,9 +4,9 @@ import { toast } from './Toast.jsx'
 import { fallbackMedia } from '../media/fallback.js'
 import { uploadWithProgress } from '../api/upload.js'
 
-function Author({ author }) {
+function Author({ author, onProfile }) {
   return (
-    <div className="social-author">
+    <button type="button" className="social-author" onClick={() => onProfile?.(author)} aria-label={author.name}>
       {author.avatar
         ? <img src={mediaUrl(author.avatar)} alt={author.name} />
         : <span>{(author.name || 'م').slice(0, 1)}</span>}
@@ -14,11 +14,11 @@ function Author({ author }) {
         <b>{author.name}</b>
         <small>{author.verified ? 'حساب موثق' : 'منشور اجتماعي'}</small>
       </div>
-    </div>
+    </button>
   )
 }
 
-export default function SocialFeed({ user }) {
+export default function SocialFeed({ user, onProfile, composerOnly = false, onBack }) {
   const [posts, setPosts] = useState([])
   const [content, setContent] = useState('')
   const [file, setFile] = useState(null)
@@ -134,20 +134,23 @@ export default function SocialFeed({ user }) {
   }
 
   return (
-    <section className="social-feed-section">
-      <div className="social-feed-head">
+    <section className={'social-feed-section' + (composerOnly ? ' social-compose-page' : '')}>
+      {composerOnly && (
+        <button type="button" className="compose-back" onClick={onBack} aria-label="رجوع" title="رجوع">×</button>
+      )}
+      {!composerOnly && <div className="social-feed-head">
         <div>
           <span className="social-kicker">المجتمع</span>
           <h2>ماذا يحدث حولك؟</h2>
         </div>
         <span className="social-live-dot">مباشر</span>
-      </div>
+      </div>}
 
       {user && (
         <form className="social-composer" onSubmit={publish}>
           <div className="social-composer-row">
             <div className="social-mini-avatar">{(user.name || 'م').slice(0, 1)}</div>
-             <textarea ref={composerRef} value={content} onChange={(e) => setContent(e.target.value)} maxLength={5000} placeholder="شارك شيئاً مع المجتمع..." />
+            <textarea ref={composerRef} autoFocus={composerOnly} value={content} onChange={(e) => setContent(e.target.value)} maxLength={5000} placeholder="شارك شيئاً مع المجتمع..." />
           </div>
           <div className="social-composer-actions">
             <label className="social-file-button">
@@ -160,10 +163,10 @@ export default function SocialFeed({ user }) {
         </form>
       )}
 
-      <div className="social-post-list">
+      {!composerOnly && <div className="social-post-list">
         {posts.map((post) => (
           <article className="social-post" id={`post-${post.id}`} key={post.id}>
-            <Author author={post.author} />
+            <Author author={post.author} onProfile={onProfile} />
             {post.content && <p className="social-post-content">{post.content}</p>}
             {post.media && (post.media_type === 'video'
               ? <video className="social-post-media" src={mediaUrl(post.media)} controls playsInline preload="metadata" />
@@ -182,7 +185,7 @@ export default function SocialFeed({ user }) {
              </div>}
           </article>
         ))}
-      </div>
+      </div>}
     </section>
   )
 }

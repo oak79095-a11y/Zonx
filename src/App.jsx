@@ -13,6 +13,7 @@ import AdminLogin from './components/AdminLogin.jsx'
 import AdminDashboard from './components/AdminDashboard.jsx'
 import NotificationCenter from './components/NotificationCenter.jsx'
 import SocialFeed from './components/SocialFeed.jsx'
+import AboutPage from './components/AboutPage.jsx'
 import Hero from './components/Hero.jsx'
 import BottomBar from './components/BottomBar.jsx'
 import Toasts, { toast } from './components/Toast.jsx'
@@ -277,7 +278,12 @@ function AppContent() {
   }
 
   const openSellerProfile = (ad) => {
-    setProfileSeller({ id: ad.seller_id || null, name: ad.seller_name, avatar: ad.seller_avatar, verified: ad.seller_verified })
+    setProfileSeller({
+      id: ad.seller_id || ad.user_id || ad.id || null,
+      name: ad.seller_name || ad.name,
+      avatar: ad.seller_avatar || ad.avatar,
+      verified: ad.seller_verified || ad.verified,
+    })
     setView('profile')
     window.scrollTo({ top: 0, behavior: 'auto' })
   }
@@ -286,6 +292,12 @@ function AppContent() {
     setProfileSeller({ id: account.id, name: account.name, avatar: account.avatar, verified: account.verified })
     setView('profile')
     setSidebarOpen(false)
+    window.scrollTo({ top: 0, behavior: 'auto' })
+  }
+
+  const openAbout = () => {
+    setSidebarOpen(false)
+    setView('about')
     window.scrollTo({ top: 0, behavior: 'auto' })
   }
 
@@ -364,13 +376,14 @@ function AppContent() {
   }
 
   const openSocialComposer = () => {
-    setView('home')
-    window.scrollTo({ top: 0, behavior: 'smooth' })
     if (!user) {
+      setView('home')
       setAuthOpen(true)
       toast('سجل الدخول لنشر منشور', 'info')
       return
     }
+    setView('compose')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
     window.dispatchEvent(new Event('focus-social-composer'))
   }
 
@@ -441,14 +454,18 @@ function AppContent() {
           الخادم غير متصل حاليا — اعلاناتك المحفوظة ستظهر عند عودة الاتصال. شغل السيرفر: <b>node server.js</b> داخل مجلد <b>server</b>
         </div>
       )}
-      <Sidebar open={sidebarOpen} onClose={()=>setSidebarOpen(false)} city={city} onCityChange={setCity} user={user} onSetUser={setUser} onLogout={handleLogout} onRequireAuth={()=>setAuthOpen(true)} />
+      <Sidebar open={sidebarOpen} onClose={()=>setSidebarOpen(false)} city={city} onCityChange={setCity} user={user} onSetUser={setUser} onLogout={handleLogout} onRequireAuth={()=>setAuthOpen(true)} onAbout={openAbout} />
        <AuthModal open={authOpen} onClose={closeAuth} onSuccess={handleAuthSuccess} />
 
       <main>
+        {view === 'compose' && (
+          <SocialFeed user={user} composerOnly onBack={goHome} />
+        )}
+
         {view === 'home' && (
           <>
-            <SocialFeed user={user} />
             <StoriesBar user={user} />
+            <SocialFeed user={user} onProfile={openSellerProfile} />
           </>
         )}
 
@@ -470,6 +487,8 @@ function AppContent() {
             userId={user?.id}
           />
         )}
+
+        {view === 'about' && <AboutPage onBack={goHome} />}
 
         {view === 'messages' && (
           <div className="messages-screen">
